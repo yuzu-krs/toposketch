@@ -66,6 +66,36 @@
       </select>
     </section>
 
+    <!-- ネットワーク設定（ノード種別に応じた項目） -->
+    @if (networkFields().length > 0) {
+      <section>
+        <h3 class="prop-heading">ネットワーク設定</h3>
+        <div class="space-y-2.5">
+          @for (field of networkFields(); track field.key) {
+            <div>
+              <label class="prop-label">{{ field.label }}</label>
+              @if (field.type === 'textarea') {
+                <textarea
+                  rows="3"
+                  class="prop-input resize-y"
+                  [value]="netValue(node, field.key)"
+                  (change)="setNetValue(node, field.key, $any($event.target).value)"
+                ></textarea>
+              } @else {
+                <input
+                  type="text"
+                  class="prop-input"
+                  [value]="netValue(node, field.key)"
+                  (change)="setNetValue(node, field.key, $any($event.target).value)"
+                  [placeholder]="field.key === 'ipAddress' ? '192.168.1.10' : field.key === 'vendor' ? 'Cisco / Yamaha など' : ''"
+                />
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
+
     <section>
       <h3 class="prop-heading">メタデータ</h3>
       @for (entry of metadataEntries(); track entry[0]) {
@@ -96,17 +126,67 @@
       <label class="prop-label">ラベル</label>
       <input #edgeLabel type="text" [value]="edge.label" (change)="store.patchEdge(edge.id, { label: edgeLabel.value })" class="prop-input" />
 
-      <label class="prop-label mt-3">線種</label>
-      <select class="prop-input" [value]="edge.style" (change)="store.patchEdge(edge.id, { style: $any($event.target).value })">
-        <option value="solid">実線</option>
-        <option value="dashed">点線</option>
+      <label class="prop-label mt-3">接続種別</label>
+      <select class="prop-input" [value]="edge.connection.type" (change)="setConnection(edge, { type: $any($event.target).value })">
+        @for (option of CONNECTION_TYPE_OPTIONS; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
       </select>
 
-      <label class="prop-label mt-3">矢印</label>
-      <select class="prop-input" [value]="edge.direction" (change)="store.patchEdge(edge.id, { direction: $any($event.target).value })">
-        <option value="forward">片方向 (→)</option>
-        <option value="both">双方向 (↔)</option>
-        <option value="none">なし (—)</option>
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <div>
+          <label class="prop-label">接続元ポート</label>
+          <input type="text" class="prop-input" placeholder="Gi0/1" [value]="edge.connection.sourcePort" (change)="setConnection(edge, { sourcePort: $any($event.target).value })" />
+        </div>
+        <div>
+          <label class="prop-label">接続先ポート</label>
+          <input type="text" class="prop-input" placeholder="ge1" [value]="edge.connection.targetPort" (change)="setConnection(edge, { targetPort: $any($event.target).value })" />
+        </div>
+        <div>
+          <label class="prop-label">通信速度</label>
+          <input type="text" class="prop-input" placeholder="1Gbps" [value]="edge.connection.speed" (change)="setConnection(edge, { speed: $any($event.target).value })" />
+        </div>
+        <div>
+          <label class="prop-label">VLAN ID</label>
+          <input type="text" class="prop-input" placeholder="10" [value]="edge.connection.vlanId" (change)="setConnection(edge, { vlanId: $any($event.target).value })" />
+        </div>
+        <div>
+          <label class="prop-label">Access / Trunk</label>
+          <select class="prop-input" [value]="edge.connection.mode" (change)="setConnection(edge, { mode: $any($event.target).value })">
+            <option value="">未設定</option>
+            <option value="access">Access</option>
+            <option value="trunk">Trunk</option>
+          </select>
+        </div>
+        <div>
+          <label class="prop-label">矢印</label>
+          <select class="prop-input" [value]="edge.direction" (change)="store.patchEdge(edge.id, { direction: $any($event.target).value })">
+            <option value="forward">片方向 (→)</option>
+            <option value="both">双方向 (↔)</option>
+            <option value="none">なし (—)</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="prop-label mt-3">線の色（空欄で種別の既定色）</label>
+      <div class="flex items-center gap-2">
+        <input
+          type="color"
+          class="h-7 w-10 cursor-pointer rounded border border-slate-300 bg-transparent dark:border-slate-600"
+          [value]="edge.connection.color || '#64748b'"
+          (change)="setConnection(edge, { color: $any($event.target).value })"
+        />
+        <input type="text" class="prop-input flex-1" placeholder="#RRGGBB" [value]="edge.connection.color" (change)="setConnection(edge, { color: $any($event.target).value })" />
+        <button class="prop-x-btn" title="既定色に戻す" (click)="resetConnectionColor(edge)">↺</button>
+      </div>
+
+      <label class="prop-label mt-3">線の太さ</label>
+      <select class="prop-input" [value]="edge.connection.width" (change)="setConnection(edge, { width: num($any($event.target).value) })">
+        <option [value]="0">既定（種別による）</option>
+        <option [value]="1">細 (1)</option>
+        <option [value]="2">普通 (2)</option>
+        <option [value]="3">太 (3)</option>
+        <option [value]="4">極太 (4)</option>
       </select>
     </section>
   }

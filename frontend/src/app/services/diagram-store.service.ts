@@ -11,6 +11,7 @@ import {
   Selection,
   cloneDocument,
   createEmptyDocument,
+  defaultConnection,
   emptySelection,
   isSelectionEmpty,
   newId,
@@ -213,6 +214,7 @@ export class DiagramStore {
   // ------------------------------------------------------------ ノード操作
 
   addNodeAt(item: PaletteItem | { key: string; label: string; color: string }, x: number, y: number): string {
+    const networkKind = (item as PaletteItem).networkKind;
     const node: DiagramNode = {
       id: newId(),
       type: item.key,
@@ -224,6 +226,7 @@ export class DiagramStore {
       color: item.color,
       groupId: null,
       metadata: {},
+      network: networkKind ? {} : undefined,
     };
     this.mutate(d => {
       const group = groupAt(d, { x: node.x + node.width / 2, y: node.y + node.height / 2 });
@@ -285,6 +288,7 @@ export class DiagramStore {
       label: '',
       style: 'solid',
       direction: 'forward',
+      connection: defaultConnection(),
     };
     this.mutate(d => d.edges.push(edge));
     this._selection.set({ nodeIds: [], edgeIds: [edge.id], groupIds: [] });

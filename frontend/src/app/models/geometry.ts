@@ -64,9 +64,17 @@ export interface EdgeGeometry {
   d: string;
   /** ベジェ中点（ラベル配置用） */
   mid: Point;
+  /** 終点（接続先側）の矢印三角形パス */
+  endArrow: string;
+  /** 始点（接続元側）の矢印三角形パス（双方向のとき使用） */
+  startArrow: string;
 }
 
-/** ノードの相対位置から接続辺を選び、ベジェパスを生成する。 */
+/** 矢印の寸法 */
+const ARROW_LENGTH = 9;
+const ARROW_WIDTH = 3.4;
+
+/** ノードの相対位置から接続辺を選び、ベジェパスと矢印を生成する。 */
 export function edgeGeometry(source: DiagramNode, target: DiagramNode): EdgeGeometry {
   const sc = nodeCenter(source);
   const tc = nodeCenter(target);
@@ -93,10 +101,30 @@ export function edgeGeometry(source: DiagramNode, target: DiagramNode): EdgeGeom
   const c1 = { x: sp.x + sn.x * k, y: sp.y + sn.y * k };
   const c2 = { x: tp.x + tn.x * k, y: tp.y + tn.y * k };
 
+  // 矢印は接続色に合わせられるよう marker ではなくパスで描く
+  const endDirection = normalize({ x: tp.x - c2.x, y: tp.y - c2.y });
+  const startDirection = normalize({ x: sp.x - c1.x, y: sp.y - c1.y });
+
   return {
     d: `M ${round(sp.x)} ${round(sp.y)} C ${round(c1.x)} ${round(c1.y)}, ${round(c2.x)} ${round(c2.y)}, ${round(tp.x)} ${round(tp.y)}`,
     mid: cubicMidpoint(sp, c1, c2, tp),
+    endArrow: arrowPath(tp, endDirection),
+    startArrow: arrowPath(sp, startDirection),
   };
+}
+
+function normalize(p: Point): Point {
+  const length = Math.hypot(p.x, p.y) || 1;
+  return { x: p.x / length, y: p.y / length };
+}
+
+/** tip を頂点とし、direction 方向を向く矢印三角形のパス。 */
+function arrowPath(tip: Point, direction: Point): string {
+  const base = { x: tip.x - direction.x * ARROW_LENGTH, y: tip.y - direction.y * ARROW_LENGTH };
+  const perp = { x: -direction.y, y: direction.x };
+  const a = { x: base.x + perp.x * ARROW_WIDTH, y: base.y + perp.y * ARROW_WIDTH };
+  const b = { x: base.x - perp.x * ARROW_WIDTH, y: base.y - perp.y * ARROW_WIDTH };
+  return `M ${round(tip.x)} ${round(tip.y)} L ${round(a.x)} ${round(a.y)} L ${round(b.x)} ${round(b.y)} Z`;
 }
 
 function cubicMidpoint(p0: Point, p1: Point, p2: Point, p3: Point): Point {

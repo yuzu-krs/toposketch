@@ -1,8 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DiagramStore } from '../services/diagram-store.service';
-import { DiagramEdge, DiagramGroup, DiagramNode } from '../models/diagram.models';
-import { typeLabel } from '../models/icon-registry';
+import {
+  CONNECTION_TYPES,
+  DiagramEdge,
+  DiagramGroup,
+  DiagramNode,
+  EdgeConnection,
+  NodeNetworkInfo,
+  defaultConnection,
+} from '../models/diagram.models';
+import { networkKindOf, typeLabel } from '../models/icon-registry';
+import { CONNECTION_TYPE_LABELS } from '../models/connection-style';
 
 type PanelMode =
   | { kind: 'empty' }
@@ -10,6 +19,44 @@ type PanelMode =
   | { kind: 'multi'; count: number }
   | { kind: 'edge'; edge: DiagramEdge }
   | { kind: 'group'; group: DiagramGroup };
+
+/** ネットワーク情報の編集フィールド定義（ノード種別に応じて表示を切り替える）。 */
+interface NetFieldDef {
+  key: keyof NodeNetworkInfo;
+  label: string;
+  type: 'text' | 'textarea';
+}
+
+const DEVICE_FIELDS: NetFieldDef[] = [
+  { key: 'hostname', label: 'ホスト名', type: 'text' },
+  { key: 'ipAddress', label: 'IPアドレス', type: 'text' },
+  { key: 'subnetMask', label: 'サブネットマスク / CIDR', type: 'text' },
+  { key: 'defaultGateway', label: 'デフォルトゲートウェイ', type: 'text' },
+  { key: 'vlanId', label: 'VLAN ID', type: 'text' },
+  { key: 'macAddress', label: 'MACアドレス', type: 'text' },
+  { key: 'vendor', label: 'メーカー', type: 'text' },
+  { key: 'model', label: 'モデル名', type: 'text' },
+  { key: 'interfaces', label: 'インターフェース', type: 'textarea' },
+  { key: 'notes', label: '備考', type: 'textarea' },
+];
+
+const ENDPOINT_FIELDS: NetFieldDef[] = [
+  { key: 'hostname', label: 'ホスト名', type: 'text' },
+  { key: 'ipAddress', label: 'IPアドレス', type: 'text' },
+  { key: 'subnetMask', label: 'サブネットマスク / CIDR', type: 'text' },
+  { key: 'defaultGateway', label: 'デフォルトゲートウェイ', type: 'text' },
+  { key: 'vlanId', label: 'VLAN ID', type: 'text' },
+  { key: 'macAddress', label: 'MACアドレス', type: 'text' },
+  { key: 'vendor', label: 'メーカー', type: 'text' },
+  { key: 'model', label: 'モデル名', type: 'text' },
+  { key: 'notes', label: '備考', type: 'textarea' },
+];
+
+const LOGICAL_FIELDS: NetFieldDef[] = [
+  { key: 'ipAddress', label: 'アドレス / CIDR', type: 'text' },
+  { key: 'vlanId', label: 'VLAN ID', type: 'text' },
+  { key: 'notes', label: '備考', type: 'textarea' },
+];
 
 /** 右側パネル：選択要素のプロパティ編集（変更確定は change イベントで履歴1件にまとめる）。 */
 @Component({
@@ -26,6 +73,11 @@ export class PropertiesComponent {
     '#64748b', '#dc2626', '#ea580c', '#d97706', '#16a34a', '#0d9488',
     '#0891b2', '#2563eb', '#4f46e5', '#7c3aed', '#db2777', '#e11d48',
   ];
+
+  readonly CONNECTION_TYPE_OPTIONS = CONNECTION_TYPES.map(type => ({
+    value: type,
+    label: CONNECTION_TYPE_LABELS[type],
+  }));
 
   readonly metadataDraft = signal<string>('');
 
@@ -71,14 +123,42 @@ export class PropertiesComponent {
     return node ? Object.entries(node.metadata) : [];
   });
 
-  readonly currentGroupLabel = computed(() => {
+  /** ノード種別に応じたネットワーク編集フィールド。 */
+  readonly networkFields = computed<NetFieldDef[]>(() => {
     const node = this.selectedNode();
-    if (!node?.groupId) return '';
-    return this.store.groups().find(g => g.id === node.groupId)?.label ?? '';
+    if (!node) return [];
+    switch (networkKindOf(node.type)) {
+      case 'device': return DEVICE_FIELDS;
+      case 'endpoint': return ENDPOINT_FIELDS;
+      case 'logical': return LOGICAL_FIELDS;
+      default: return [];
+    }
   });
 
   typeCaption(type: string): string {
     return typeLabel(type);
+  }
+
+  netValue(node: DiagramNode, key: keyof NodeNetworkInfo): string {
+    return node.network?.[key] ?? '';
+  }
+
+  setNetValue(node: DiagramNode, key: keyof NodeNetworkInfo, value: string): void {
+    const network: NodeNetworkInfo = { ...(node.network ?? {}) };
+    if (value.trim()) {
+      network[key] = value;
+    } else {
+      delete network[key];
+    }
+    this.store.patchNode(node.id, { network: Object.keys(network).length ? network : undefined });
+  }
+
+  setConnection(edge: DiagramEdge, patch: Partial<EdgeConnection>): void {
+    this.store.patchEdge(edge.id, { connection: { ...edge.connection, ...patch } });
+  }
+
+  resetConnectionColor(edge: DiagramEdge): void {
+    this.setConnection(edge, { color: '' });
   }
 
   num(value: string): number {
@@ -128,5 +208,9 @@ export class PropertiesComponent {
     if (name) {
       this.store.renameDocument(name);
     }
+  }
+
+  get defaultConnectionRef(): EdgeConnection {
+    return defaultConnection();
   }
 }

@@ -1,4 +1,11 @@
-import { DiagramDocument } from './diagram.models';
+import { DiagramDocument, EdgeConnection } from './diagram.models';
+
+function connection(overrides: Partial<EdgeConnection> = {}): EdgeConnection {
+  return {
+    type: 'ethernet', sourcePort: '', targetPort: '', speed: '',
+    vlanId: '', mode: '', color: '', width: 0, ...overrides,
+  };
+}
 
 /** 初回起動時のデモ用サンプル構成図（Web アプリの一般的なアーキテクチャ）。 */
 export function createSampleDocument(): DiagramDocument {
@@ -22,15 +29,15 @@ export function createSampleDocument(): DiagramDocument {
       { id: 'n-blob', type: 'storage', label: 'Blob Storage', x: 850, y: 470, width: 150, height: 64, color: '#0078d4', groupId: 'g-azure', metadata: { コンテナー: 'images' } },
     ],
     edges: [
-      { id: 'e-1', source: 'n-user', target: 'n-spa', label: 'HTTPS', style: 'solid', direction: 'forward' },
-      { id: 'e-2', source: 'n-spa', target: 'n-cdn', label: '静的アセット', style: 'solid', direction: 'forward' },
-      { id: 'e-3', source: 'n-spa', target: 'n-api', label: 'REST / JSON', style: 'solid', direction: 'both' },
-      { id: 'e-4', source: 'n-api', target: 'n-sql', label: 'EF Core', style: 'solid', direction: 'forward' },
-      { id: 'e-5', source: 'n-api', target: 'n-redis', label: 'キャッシュ', style: 'dashed', direction: 'forward' },
-      { id: 'e-6', source: 'n-api', target: 'n-sb', label: 'キュー投入', style: 'dashed', direction: 'forward' },
-      { id: 'e-7', source: 'n-sb', target: 'n-func', label: 'トリガー', style: 'solid', direction: 'forward' },
-      { id: 'e-8', source: 'n-func', target: 'n-blob', label: '画像保存', style: 'solid', direction: 'forward' },
-      { id: 'e-9', source: 'n-func', target: 'n-sql', label: '書き込み', style: 'solid', direction: 'forward' },
+      { id: 'e-1', source: 'n-user', target: 'n-spa', label: 'HTTPS', style: 'solid', direction: 'forward', connection: connection({ type: 'logical', speed: 'HTTPS' }) },
+      { id: 'e-2', source: 'n-spa', target: 'n-cdn', label: '静的アセット', style: 'solid', direction: 'forward', connection: connection() },
+      { id: 'e-3', source: 'n-spa', target: 'n-api', label: 'REST / JSON', style: 'solid', direction: 'both', connection: connection({ type: 'logical', speed: 'HTTPS' }) },
+      { id: 'e-4', source: 'n-api', target: 'n-sql', label: 'EF Core', style: 'solid', direction: 'forward', connection: connection() },
+      { id: 'e-5', source: 'n-api', target: 'n-redis', label: 'キャッシュ', style: 'dashed', direction: 'forward', connection: connection({ type: 'logical' }) },
+      { id: 'e-6', source: 'n-api', target: 'n-sb', label: 'キュー投入', style: 'dashed', direction: 'forward', connection: connection({ type: 'logical' }) },
+      { id: 'e-7', source: 'n-sb', target: 'n-func', label: 'トリガー', style: 'solid', direction: 'forward', connection: connection({ type: 'logical' }) },
+      { id: 'e-8', source: 'n-func', target: 'n-blob', label: '画像保存', style: 'solid', direction: 'forward', connection: connection() },
+      { id: 'e-9', source: 'n-func', target: 'n-sql', label: '書き込み', style: 'solid', direction: 'forward', connection: connection() },
     ],
   };
 }

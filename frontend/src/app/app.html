@@ -1,6 +1,10 @@
 <div class="flex h-screen flex-col bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
   <app-toolbar
     [saving]="saving()"
+    [paletteOpen]="paletteOpen()"
+    [propertiesOpen]="propertiesOpen()"
+    (togglePalette)="paletteOpen.set(!paletteOpen())"
+    (toggleProperties)="propertiesOpen.set(!propertiesOpen())"
     (newDiagram)="newDiagram()"
     (openDialog)="openDialogVisible.set(true)"
     (save)="save()"
@@ -15,21 +19,29 @@
   ></app-toolbar>
 
   <div class="flex min-h-0 flex-1">
-    <aside class="w-60 shrink-0 border-r border-slate-200 dark:border-slate-700">
-      <app-palette (addRequest)="onPaletteAdd($event)"></app-palette>
-    </aside>
+    @if (paletteOpen()) {
+      <aside class="w-60 shrink-0 border-r border-slate-200 dark:border-slate-700">
+        <app-palette (addRequest)="onPaletteAdd($event)"></app-palette>
+      </aside>
+    }
 
     <main class="relative min-w-0 flex-1">
       <app-canvas #canvasRef></app-canvas>
     </main>
 
-    <aside class="w-72 shrink-0 border-l border-slate-200 dark:border-slate-700">
-      <app-properties></app-properties>
-    </aside>
+    @if (propertiesOpen()) {
+      <aside class="w-72 shrink-0 border-l border-slate-200 dark:border-slate-700">
+        <app-properties></app-properties>
+      </aside>
+    }
   </div>
 
   @if (openDialogVisible()) {
     <app-open-dialog (closed)="openDialogVisible.set(false)" (opened)="onOpened($event)"></app-open-dialog>
+  }
+
+  @if (newDialogVisible()) {
+    <app-new-diagram-dialog (closed)="newDialogVisible.set(false)" (selected)="onTemplateSelected($event)"></app-new-diagram-dialog>
   }
 
   <app-toasts></app-toasts>

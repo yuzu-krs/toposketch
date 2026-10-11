@@ -10,6 +10,9 @@ export interface IconDef {
   svg: string;
 }
 
+/** ネットワーク機器として持たせるプロパティの種別（プロパティパネルの表示制御に使用）。 */
+export type NetworkKind = 'device' | 'endpoint' | 'logical';
+
 export interface PaletteItem {
   /** アイコンキー */
   key: string;
@@ -17,6 +20,10 @@ export interface PaletteItem {
   color: string;
   width?: number;
   height?: number;
+  /** ネットワーク系ノードの場合の種別（未指定なら一般技術コンポーネント） */
+  networkKind?: NetworkKind;
+  /** 検索用キーワード（日本語別名・略称など） */
+  keywords?: string[];
 }
 
 export interface PaletteCategory {
@@ -28,6 +35,7 @@ export interface PaletteCategory {
 const FONT = 'Segoe UI,Arial,sans-serif';
 
 export const ICONS: Record<string, IconDef> = {
+  // ------------------------------------------------ アプリケーション / クラウド
   angular: {
     viewBox: '0 0 24 24',
     svg: `<path fill="#DD0031" d="M12 2.1 20.7 5.3 19.4 18.4 12 22.3 4.6 18.4 3.3 5.3Z"/><path fill="#fff" opacity=".14" d="M12 4.6 18.2 6.9 17.3 17.2 12 20 6.7 17.2 5.8 6.9Z"/><path fill="#fff" d="M12 7.3 15 14.7H13.4L12.6 12.7H11.4L10.6 14.7H9Z"/>`,
@@ -176,10 +184,6 @@ export const ICONS: Record<string, IconDef> = {
     viewBox: '0 0 24 24',
     svg: `<circle cx="12" cy="12" r="8.6" fill="#3B82F6"/><path stroke="#DBEAFE" stroke-width="1.2" fill="none" d="M3.4 12h17.2M12 3.4c-5.4 5.4-5.4 11.8 0 17.2M12 3.4c5.4 5.4 5.4 11.8 0 17.2"/>`,
   },
-  mobile: {
-    viewBox: '0 0 24 24',
-    svg: `<rect x="7.5" y="2.5" width="9" height="19" rx="2.5" fill="#0F172A"/><rect x="9" y="4.5" width="6" height="13.5" rx="1" fill="#38BDF8"/><circle cx="12" cy="19.8" r=".9" fill="#38BDF8"/>`,
-  },
   user: {
     viewBox: '0 0 24 24',
     svg: `<circle cx="12" cy="8" r="4" fill="#0891B2"/><path d="M4.5 20.5c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5Z" fill="#0891B2"/>`,
@@ -216,25 +220,127 @@ export const ICONS: Record<string, IconDef> = {
     viewBox: '0 0 24 24',
     svg: `<path fill="#64748B" d="M6 2.5h8l4 4v15H6Z"/><path fill="#94A3B8" d="M14 2.5l4 4h-4Z"/><path stroke="#fff" stroke-width="1.3" d="M8.5 11h7M8.5 14h7M8.5 17h4.5"/>`,
   },
-  firewall: {
-    viewBox: '0 0 24 24',
-    svg: `<rect x="3" y="5" width="18" height="14" rx="1.5" fill="#EF4444"/><path stroke="#fff" stroke-width="1.1" d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>`,
-  },
-  loadbalancer: {
-    viewBox: '0 0 24 24',
-    svg: `<circle cx="12" cy="7" r="3" fill="#8B5CF6"/><circle cx="6" cy="17" r="2.6" fill="#8B5CF6"/><circle cx="12" cy="17" r="2.6" fill="#8B5CF6"/><circle cx="18" cy="17" r="2.6" fill="#8B5CF6"/><path stroke="#C4B5FD" stroke-width="1.3" fill="none" d="M10.5 9.5 7 14.6M12 10v4.4M13.5 9.5 17 14.6"/>`,
-  },
   cdn: {
     viewBox: '0 0 24 24',
     svg: `<circle cx="12" cy="12" r="7.5" fill="none" stroke="#06B6D4" stroke-width="2"/><path stroke="#06B6D4" stroke-width="1.3" fill="none" d="M12 4.5c-3.5 3.5-3.5 11.5 0 15M12 4.5c3.5 3.5 3.5 11.5 0 15M4.6 12h14.8"/><circle cx="12" cy="12" r="2" fill="#06B6D4"/>`,
   },
-  vm: {
-    viewBox: '0 0 24 24',
-    svg: `<rect x="3" y="4.5" width="18" height="12" rx="2" fill="#334155"/><rect x="5" y="6.5" width="14" height="8" rx="1" fill="#7DD3FC"/><path fill="#334155" d="M10 16.5h4l.8 3H9.2Z"/>`,
-  },
   custom: {
     viewBox: '0 0 24 24',
     svg: `<rect x="2" y="2" width="20" height="20" rx="4.5" fill="#64748B"/><path fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" d="M12 5.5 18 9v6l-6 3.5L6 15V9Z"/><path stroke="#fff" stroke-width="1.6" fill="none" d="M6 9l6 3.5L18 9M12 12.5V18.5"/>`,
+  },
+
+  // ---------------------------------------------------- ネットワーク機器
+  router: {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="12" cy="12" r="9.2" fill="#075985"/><path fill="#fff" d="M4.8 9.6h7V7.4l3.8 3.2-3.8 3.2v-2.2h-7Z"/><path fill="#BAE6FD" d="M19.2 14.4h-7v2.2l-3.8-3.2 3.8-3.2v2.2h7Z"/>`,
+  },
+  'switch-l2': {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="7" width="19" height="10" rx="2" fill="#15803D"/><path fill="#fff" d="M5.6 12h4.4v-1.7l3 2.2-3 2.2V13H5.6Z"/><path fill="#DCFCE7" opacity=".9" d="M18.4 12H14v1.7l-3-2.2 3-2.2V11h4.4Z"/>`,
+  },
+  'switch-l3': {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="7" width="19" height="10" rx="2" fill="#C2410C"/><path fill="#fff" d="M5.6 12h4.4v-1.7l3 2.2-3 2.2V13H5.6Z"/><path fill="#FFEDD5" opacity=".9" d="M18.4 12H14v1.7l-3-2.2 3-2.2V11h4.4Z"/>`,
+  },
+  firewall: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="3" y="5" width="18" height="14" rx="1.5" fill="#EF4444"/><path stroke="#fff" stroke-width="1.1" d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>`,
+  },
+  'access-point': {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="12" cy="10.2" r="2" fill="#0284C7"/><path d="M8.8 13.4a4.6 4.6 0 0 1 6.4 0" fill="none" stroke="#0284C7" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 16a8.2 8.2 0 0 1 11.6 0" fill="none" stroke="#38BDF8" stroke-width="1.6" stroke-linecap="round"/><rect x="9.2" y="16.8" width="5.6" height="3.6" rx="1" fill="#0284C7"/>`,
+  },
+  wlc: {
+    viewBox: '0 0 24 24',
+    svg: `<path d="M9.2 6.6a4.2 4.2 0 0 1 5.6 0" fill="none" stroke="#14B8A6" stroke-width="1.5" stroke-linecap="round"/><path d="M7 4.2a7.4 7.4 0 0 1 10 0" fill="none" stroke="#5EEAD4" stroke-width="1.5" stroke-linecap="round"/><rect x="6.4" y="8.4" width="11.2" height="4.2" rx="1.2" fill="#14B8A6"/><rect x="4.6" y="14.4" width="14.8" height="4.6" rx="1.2" fill="#0F766E"/><g fill="#99F6E4"><circle cx="7.4" cy="16.7" r="1"/><circle cx="10.2" cy="16.7" r="1"/><circle cx="13" cy="16.7" r="1"/><circle cx="15.8" cy="16.7" r="1"/></g>`,
+  },
+  hub: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="9" width="19" height="7" rx="1.5" fill="#475569"/><g fill="#E2E8F0"><circle cx="5.6" cy="12.5" r="1"/><circle cx="8.1" cy="12.5" r="1"/><circle cx="10.6" cy="12.5" r="1"/><circle cx="13.1" cy="12.5" r="1"/><circle cx="15.6" cy="12.5" r="1"/><circle cx="18.1" cy="12.5" r="1"/></g>`,
+  },
+  'load-balancer': {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="12" cy="7" r="3" fill="#8B5CF6"/><circle cx="6" cy="17" r="2.6" fill="#8B5CF6"/><circle cx="12" cy="17" r="2.6" fill="#8B5CF6"/><circle cx="18" cy="17" r="2.6" fill="#8B5CF6"/><path stroke="#C4B5FD" stroke-width="1.3" fill="none" d="M10.5 9.5 7 14.6M12 10v4.4M13.5 9.5 17 14.6"/>`,
+  },
+  'vpn-gateway': {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="4.5" width="19" height="15" rx="2.5" fill="#1D4ED8"/><path fill="#fff" d="M12 7.6a2.7 2.7 0 0 1 2.7 2.7v1.1h.6c.5 0 .9.4.9.9v3.4c0 .5-.4.9-.9.9H8.7c-.5 0-.9-.4-.9-.9v-3.4c0-.5.4-.9.9-.9h.6v-1.1A2.7 2.7 0 0 1 12 7.6Zm0 1.4a1.3 1.3 0 0 0-1.3 1.3v1.1h2.6v-1.1A1.3 1.3 0 0 0 12 9Z"/>`,
+  },
+  'ids-ips': {
+    viewBox: '0 0 24 24',
+    svg: `<path fill="#B91C1C" d="M12 2.4 20 5.7v5.5c0 4.6-3.2 8-8 10.4-4.8-2.4-8-5.8-8-10.4V5.7Z"/><circle cx="10.2" cy="11" r="3.1" fill="none" stroke="#fff" stroke-width="1.4"/><path stroke="#fff" stroke-width="1.6" stroke-linecap="round" d="m12.6 13.4 3 3"/>`,
+  },
+
+  // ---------------------------------------------------- サーバー・端末
+  server: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="3" y="3.6" width="18" height="6.6" rx="1.4" fill="#334155"/><rect x="3" y="12.2" width="18" height="6.6" rx="1.4" fill="#475569"/><g fill="#94A3B8"><rect x="5.2" y="6" width="8.8" height="1.9" rx=".5"/><rect x="5.2" y="14.6" width="8.8" height="1.9" rx=".5"/></g><circle cx="17.6" cy="6.9" r="1" fill="#22C55E"/><circle cx="17.6" cy="15.5" r="1" fill="#22C55E"/>`,
+  },
+  vm: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="3" y="4.5" width="18" height="12" rx="2" fill="#334155"/><rect x="5" y="6.5" width="14" height="8" rx="1" fill="#7DD3FC"/><path fill="#334155" d="M10 16.5h4l.8 3H9.2Z"/><g stroke="#1E293B" stroke-width="1" fill="none"><rect x="7.2" y="7.6" width="4" height="2.8" rx=".4" fill="#38BDF8"/><rect x="12.6" y="10.2" width="4" height="2.8" rx=".4" fill="#38BDF8"/></g>`,
+  },
+  nas: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="4" y="4.5" width="16" height="15" rx="2" fill="#0F766E"/><g stroke="#5EEAD4" stroke-width="1.2"><path d="M7 8.5h10M7 12h10M7 15.5h10"/></g><circle cx="17.2" cy="8.5" r=".9" fill="#FBBF24"/>`,
+  },
+  pc: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="3" y="4" width="18" height="12" rx="1.5" fill="#1E293B"/><rect x="5" y="6" width="14" height="8" rx=".8" fill="#38BDF8"/><path fill="#1E293B" d="M2 17.5h20l-1.6 2.7H3.6Z"/>`,
+  },
+  laptop: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="4" y="5" width="16" height="10" rx="1.3" fill="#1E293B"/><rect x="5.5" y="6.5" width="13" height="7" rx=".7" fill="#38BDF8"/><path fill="#475569" d="M2.5 16.5h19l-1.3 2.6H3.8Z"/>`,
+  },
+  smartphone: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="#334155"/><rect x="8.6" y="4.8" width="6.8" height="13" rx=".8" fill="#38BDF8"/><circle cx="12" cy="19.6" r=".8" fill="#94A3B8"/>`,
+  },
+  printer: {
+    viewBox: '0 0 24 24',
+    svg: `<path fill="#475569" d="M6.5 8V3.5h11V8Z"/><rect x="3" y="8" width="18" height="8" rx="1.5" fill="#334155"/><rect x="6.5" y="13" width="11" height="7" rx="1" fill="#E2E8F0"/><circle cx="17.5" cy="10.2" r="1" fill="#22C55E"/>`,
+  },
+
+  // ------------------------------------------------ ネットワーク・論理構成
+  internet: {
+    viewBox: '0 0 24 24',
+    svg: `<path fill="#94A3B8" d="M6.7 18.8a4.2 4.2 0 0 1-.4-8.4 6.1 6.1 0 0 1 11.9-1.4 4.4 4.4 0 0 1 1.3 8.6c-.4.1-.9.2-1.3.2Z"/><path stroke="#fff" stroke-width="1.1" fill="none" d="M3.4 13.6h17.2M12 9.2c-3.4 3.4-3.4 7.2 0 10.6M12 9.2c3.4 3.4 3.4 7.2 0 10.6"/>`,
+  },
+  lan: {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="12" cy="6" r="2.6" fill="#0891B2"/><circle cx="5" cy="18" r="2.6" fill="#0891B2"/><circle cx="19" cy="18" r="2.6" fill="#0891B2"/><path stroke="#67E8F9" stroke-width="1.5" fill="none" d="M10.9 8.3 6.1 15.7M13.1 8.3l4.8 7.4M7.7 18h8.6"/>`,
+  },
+  wan: {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="8" cy="8" r="5" fill="#7C3AED"/><circle cx="16" cy="16" r="5" fill="#7C3AED"/><circle cx="16" cy="8" r="1.6" fill="#DDD6FE"/><circle cx="8" cy="16" r="1.6" fill="#DDD6FE"/><path stroke="#A78BFA" stroke-width="1.4" fill="none" d="M11.5 11.5 13 13"/>`,
+  },
+  vlan: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="4.5" width="19" height="15" rx="2" fill="#0369A1"/><text x="12" y="12.8" text-anchor="middle" font-family="${FONT}" font-size="5.6" font-weight="700" fill="#fff">VLAN</text><g fill="#7DD3FC"><circle cx="7.5" cy="16.2" r="1.4"/><circle cx="12" cy="16.2" r="1.4"/><circle cx="16.5" cy="16.2" r="1.4"/></g>`,
+  },
+  subnet: {
+    viewBox: '0 0 24 24',
+    svg: `<circle cx="12" cy="12" r="8.8" fill="#CA8A04"/><path d="M12 3.2a8.8 8.8 0 0 1 0 17.6Z" fill="#FACC15"/><g fill="#fff"><circle cx="7.6" cy="9.6" r="1.5"/><circle cx="7.6" cy="14.4" r="1.5"/></g><circle cx="15.8" cy="12" r="1.5" fill="#713F12"/>`,
+  },
+  dmz: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.8" y="4.4" width="18.4" height="15.2" rx="2.2" fill="#FB923C" fill-opacity=".22" stroke="#EA580C" stroke-width="1.6" stroke-dasharray="4 3"/><path stroke="#EA580C" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M6.5 12h11M6.5 12l2.2-2.2M6.5 12l2.2 2.2M17.5 12l-2.2-2.2M17.5 12l-2.2 2.2"/>`,
+  },
+  'vpn-tunnel': {
+    viewBox: '0 0 24 24',
+    svg: `<path stroke="#C4B5FD" stroke-width="1.2" fill="none" d="M3.6 7.4C9 9 15 9 20.4 7.4M3.6 16.6C9 15 15 15 20.4 16.6"/><path stroke="#8B5CF6" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round" fill="none" d="M3.5 12h17"/><rect x="10.5" y="10.4" width="3.4" height="3" rx=".6" fill="#8B5CF6"/><path stroke="#8B5CF6" stroke-width="1" fill="none" d="M11.2 10.4V9.5a.9.9 0 0 1 1.8 0v.9"/>`,
+  },
+  'cloud-network': {
+    viewBox: '0 0 24 24',
+    svg: `<path fill="#0284C7" d="M6.7 19.5a4.2 4.2 0 0 1-.4-8.4A6.1 6.1 0 0 1 18.2 9.7a4.4 4.4 0 0 1 1.3 8.6c-.4.1-.9.2-1.3.2Z"/><g stroke="#fff" stroke-width="1.1"><path d="M9 13.4l1.4 1.6M15 13.4l-1.4 1.6M10.4 15h3.2" fill="none"/></g><g fill="#fff"><circle cx="8.6" cy="12.4" r="1.3"/><circle cx="15.4" cy="12.4" r="1.3"/><circle cx="12" cy="16.6" r="1.3"/></g>`,
+  },
+  dns: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="2.5" width="19" height="19" rx="3" fill="#1E40AF"/><circle cx="12" cy="10.6" r="4.6" fill="none" stroke="#BFDBFE" stroke-width="1.2"/><path stroke="#BFDBFE" stroke-width="1.2" fill="none" d="M7.4 10.6h9.2M12 6c-2.2 2.2-2.2 7 0 9.2M12 6c2.2 2.2 2.2 7 0 9.2"/><text x="12" y="19.4" text-anchor="middle" font-family="${FONT}" font-size="4.6" font-weight="700" fill="#fff">DNS</text>`,
+  },
+  dhcp: {
+    viewBox: '0 0 24 24',
+    svg: `<rect x="2.5" y="2.5" width="19" height="19" rx="3" fill="#BE185D"/><rect x="4.6" y="4.8" width="6.6" height="5.2" rx="1" fill="#fff"/><rect x="12.8" y="14" width="6.6" height="5.2" rx="1" fill="#FBCFE8"/><path stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M8 10.4v5.4h4.4m0 0-2-2m2 2-2 2"/>`,
   },
 };
 
@@ -243,16 +349,15 @@ export const PALETTE: PaletteCategory[] = [
     id: 'frontend',
     label: 'フロントエンド',
     items: [
-      { key: 'angular', label: 'Angular', color: '#DD0031' },
-      { key: 'react', label: 'React', color: '#61DAFB' },
-      { key: 'vue', label: 'Vue.js', color: '#41B883' },
+      { key: 'angular', label: 'Angular', color: '#DD0031', keywords: [' アンギュラー', 'SPA'] },
+      { key: 'react', label: 'React', color: '#61DAFB', keywords: ['リアクト'] },
+      { key: 'vue', label: 'Vue.js', color: '#41B883', keywords: ['ヴュー'] },
       { key: 'svelte', label: 'Svelte', color: '#FF3E00' },
-      { key: 'typescript', label: 'TypeScript', color: '#3178C6' },
-      { key: 'javascript', label: 'JavaScript', color: '#E5C500' },
+      { key: 'typescript', label: 'TypeScript', color: '#3178C6', keywords: ['TS'] },
+      { key: 'javascript', label: 'JavaScript', color: '#E5C500', keywords: ['JS'] },
       { key: 'html5', label: 'HTML5', color: '#E34F26' },
       { key: 'css3', label: 'CSS3', color: '#1572B6' },
       { key: 'browser', label: 'ブラウザ', color: '#3B82F6' },
-      { key: 'mobile', label: 'モバイルアプリ', color: '#0F172A' },
       { key: 'user', label: 'ユーザー', color: '#0891B2' },
     ],
   },
@@ -260,12 +365,12 @@ export const PALETTE: PaletteCategory[] = [
     id: 'backend',
     label: 'バックエンド',
     items: [
-      { key: 'aspnet', label: 'ASP.NET Core', color: '#512BD4' },
-      { key: 'nodejs', label: 'Node.js', color: '#5FA04E' },
+      { key: 'aspnet', label: 'ASP.NET Core', color: '#512BD4', keywords: ['dotnet', '.net'] },
+      { key: 'nodejs', label: 'Node.js', color: '#5FA04E', keywords: ['node'] },
       { key: 'python', label: 'Python', color: '#3776AB' },
       { key: 'java', label: 'Java', color: '#5382A1' },
-      { key: 'go', label: 'Go', color: '#00ADD8' },
-      { key: 'nginx', label: 'Nginx', color: '#009639' },
+      { key: 'go', label: 'Go', color: '#00ADD8', keywords: ['golang'] },
+      { key: 'nginx', label: 'Nginx', color: '#009639', keywords: ['リバースプロキシ'] },
       { key: 'iis', label: 'IIS', color: '#0085C3' },
       { key: 'api', label: 'Web API', color: '#059669' },
       { key: 'gateway', label: 'API ゲートウェイ', color: '#475569' },
@@ -273,17 +378,62 @@ export const PALETTE: PaletteCategory[] = [
     ],
   },
   {
+    id: 'network-devices',
+    label: 'ネットワーク機器',
+    items: [
+      { key: 'router', label: 'ルーター', color: '#075985', networkKind: 'device', keywords: ['RTX', 'Cisco', 'Yamaha', 'ルータ'] },
+      { key: 'switch-l2', label: 'L2 スイッチ', color: '#15803D', networkKind: 'device', keywords: ['スイッチ', 'SW', 'ハブ'] },
+      { key: 'switch-l3', label: 'L3 スイッチ', color: '#C2410C', networkKind: 'device', keywords: ['コアルータートスイッチ'] },
+      { key: 'firewall', label: 'ファイアウォール', color: '#EF4444', networkKind: 'device', keywords: ['FW', 'UTM'] },
+      { key: 'access-point', label: '無線AP', color: '#0284C7', networkKind: 'device', keywords: ['アクセスポイント', 'Wi-Fi', 'AP', '無線'] },
+      { key: 'wlc', label: 'WLC（無線LANコントローラー）', color: '#0F766E', networkKind: 'device', keywords: ['コントローラ'] },
+      { key: 'hub', label: 'ハブ', color: '#475569', networkKind: 'device', keywords: ['リピータ'] },
+      { key: 'load-balancer', label: 'ロードバランサー', color: '#8B5CF6', networkKind: 'device', keywords: ['LB'] },
+      { key: 'vpn-gateway', label: 'VPN ゲートウェイ', color: '#1D4ED8', networkKind: 'device', keywords: ['VPN'] },
+      { key: 'ids-ips', label: 'IDS / IPS', color: '#B91C1C', networkKind: 'device', keywords: ['侵入検知'] },
+    ],
+  },
+  {
+    id: 'endpoints',
+    label: 'サーバー・端末',
+    items: [
+      { key: 'server', label: '物理サーバー', color: '#334155', networkKind: 'endpoint', keywords: ['サーバ'] },
+      { key: 'vm', label: '仮想マシン', color: '#334155', networkKind: 'endpoint', keywords: ['VM', 'Virtual Machine', '仮想'] },
+      { key: 'nas', label: 'NAS', color: '#0F766E', networkKind: 'endpoint', keywords: ['ストレージ'] },
+      { key: 'pc', label: 'デスクトップ PC', color: '#1E293B', networkKind: 'endpoint', keywords: ['PC', 'パソコン'] },
+      { key: 'laptop', label: 'ノート PC', color: '#1E293B', networkKind: 'endpoint', keywords: ['ラップトップ', 'PC'] },
+      { key: 'smartphone', label: 'スマートフォン', color: '#334155', networkKind: 'endpoint', keywords: ['携帯', 'モバイル'] },
+      { key: 'printer', label: 'プリンター', color: '#334155', networkKind: 'endpoint', keywords: ['印刷'] },
+    ],
+  },
+  {
+    id: 'network-logical',
+    label: 'ネットワーク（論理）',
+    items: [
+      { key: 'internet', label: 'インターネット', color: '#94A3B8', networkKind: 'logical', keywords: ['ISP'] },
+      { key: 'lan', label: 'LAN', color: '#0891B2', networkKind: 'logical', keywords: ['ローカル'] },
+      { key: 'wan', label: 'WAN', color: '#7C3AED', networkKind: 'logical', keywords: ['広域'] },
+      { key: 'vlan', label: 'VLAN', color: '#0369A1', networkKind: 'logical' },
+      { key: 'subnet', label: 'サブネット', color: '#CA8A04', networkKind: 'logical', keywords: ['セグメント', 'CIDR'] },
+      { key: 'dmz', label: 'DMZ', color: '#EA580C', networkKind: 'logical' },
+      { key: 'vpn-tunnel', label: 'VPN トンネル', color: '#8B5CF6', networkKind: 'logical', keywords: ['VPN'] },
+      { key: 'cloud-network', label: 'クラウドネットワーク', color: '#0284C7', networkKind: 'logical', keywords: ['VNet', 'VPC'] },
+      { key: 'dns', label: 'DNS', color: '#1E40AF', networkKind: 'logical' },
+      { key: 'dhcp', label: 'DHCP', color: '#BE185D', networkKind: 'logical' },
+    ],
+  },
+  {
     id: 'data',
     label: 'データストア',
     items: [
-      { key: 'sqlserver', label: 'SQL Server', color: '#D83B01' },
-      { key: 'postgresql', label: 'PostgreSQL', color: '#336791' },
+      { key: 'sqlserver', label: 'SQL Server', color: '#D83B01', keywords: ['DB', 'データベース'] },
+      { key: 'postgresql', label: 'PostgreSQL', color: '#336791', keywords: ['postgres'] },
       { key: 'mysql', label: 'MySQL', color: '#00758F' },
       { key: 'mongodb', label: 'MongoDB', color: '#47A248' },
       { key: 'redis', label: 'Redis', color: '#DC382D' },
       { key: 'cosmosdb', label: 'Cosmos DB', color: '#0078D4' },
       { key: 'dynamodb', label: 'DynamoDB', color: '#4053D6' },
-      { key: 'database', label: 'データベース', color: '#64748B' },
+      { key: 'database', label: 'データベース（汎用）', color: '#64748B', keywords: ['DB'] },
       { key: 'cache', label: 'キャッシュ', color: '#7C3AED' },
     ],
   },
@@ -314,12 +464,9 @@ export const PALETTE: PaletteCategory[] = [
     label: 'インフラ',
     items: [
       { key: 'docker', label: 'Docker', color: '#1D63ED' },
-      { key: 'kubernetes', label: 'Kubernetes', color: '#326CE5' },
+      { key: 'kubernetes', label: 'Kubernetes', color: '#326CE5', keywords: ['k8s'] },
       { key: 'windows', label: 'Windows', color: '#0078D4' },
       { key: 'cdn', label: 'CDN', color: '#06B6D4' },
-      { key: 'loadbalancer', label: 'ロードバランサー', color: '#8B5CF6' },
-      { key: 'firewall', label: 'ファイアウォール', color: '#EF4444' },
-      { key: 'vm', label: 'VM', color: '#334155' },
       { key: 'queue', label: 'キュー', color: '#0EA5E9' },
       { key: 'log', label: 'ログ', color: '#64748B' },
       { key: 'email', label: 'メール', color: '#0284C7' },
@@ -345,4 +492,9 @@ export function paletteItem(key: string): PaletteItem | null {
 /** アイコンの表示ラベル（パレット項目名、なければキーそのまま）。 */
 export function typeLabel(key: string): string {
   return paletteItem(key)?.label ?? (key === 'custom' ? 'カスタム' : key);
+}
+
+/** ノード種別に対応するネットワーク種別（未設定なら null）。 */
+export function networkKindOf(type: string): NetworkKind | null {
+  return paletteItem(type)?.networkKind ?? null;
 }

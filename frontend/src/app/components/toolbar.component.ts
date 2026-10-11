@@ -18,6 +18,9 @@ export class ToolbarComponent {
   private readonly layout = inject(LayoutService);
   readonly saving = input(false);
 
+  readonly paletteOpen = input(true);
+  readonly propertiesOpen = input(true);
+
   readonly newDiagram = output<void>();
   readonly openDialog = output<void>();
   readonly save = output<void>();
@@ -29,8 +32,11 @@ export class ToolbarComponent {
   readonly zoomOut = output<void>();
   readonly zoomFit = output<void>();
   readonly zoomReset = output<void>();
+  readonly togglePalette = output<void>();
+  readonly toggleProperties = output<void>();
 
   readonly exportOpen = signal(false);
+  readonly layoutOpen = signal(false);
 
   rename(value: string): void {
     const name = value.trim();
@@ -39,8 +45,9 @@ export class ToolbarComponent {
     }
   }
 
-  autoLayout(): void {
-    const positions = this.layout.run(this.store.doc());
+  autoLayout(direction: 'TB' | 'LR'): void {
+    this.layoutOpen.set(false);
+    const positions = this.layout.run(this.store.doc(), { direction });
     this.store.applyLayout(positions);
   }
 

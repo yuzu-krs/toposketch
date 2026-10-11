@@ -13,8 +13,10 @@ import {
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { DiagramStore } from '../services/diagram-store.service';
 import { ThemeService } from '../services/theme.service';
+import { RecentItemsService } from '../services/recent-items.service';
 import { iconFor, paletteItem, typeLabel } from '../models/icon-registry';
 import { DEFAULT_NODE_HEIGHT, DEFAULT_NODE_WIDTH, DiagramNode } from '../models/diagram.models';
+import { connectionMetaText, resolveConnectionStyle } from '../models/connection-style';
 import { createSampleDocument } from '../models/sample-diagram';
 import {
   Point,
@@ -65,6 +67,7 @@ export class CanvasComponent implements AfterViewInit {
   readonly store = inject(DiagramStore);
   private readonly theme = inject(ThemeService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly recents = inject(RecentItemsService);
 
   private readonly svgRoot = viewChild.required<ElementRef<SVGSVGElement>>('svgRoot');
   private readonly editInput = viewChild<ElementRef<HTMLInputElement>>('editInput');
@@ -97,12 +100,19 @@ export class CanvasComponent implements AfterViewInit {
 
   readonly edgesView = computed(() => {
     const doc = this.store.doc();
+    const themeEdge = this.pal().edge;
     const byId = new Map(doc.nodes.map(n => [n.id, n]));
     return doc.edges.flatMap(e => {
       const source = byId.get(e.source);
       const target = byId.get(e.target);
       if (!source || !target) return [];
-      return [{ edge: e, geo: edgeGeometry(source, target) }];
+      const style = resolveConnectionStyle(e.connection, themeEdge, { legacyDashed: e.style === 'dashed' });
+      return [{
+        edge: e,
+        geo: edgeGeometry(source, target),
+        style,
+        meta: connectionMetaText(e.connection),
+      }];
     });
   });
 
@@ -550,6 +560,7 @@ export class CanvasComponent implements AfterViewInit {
   addNodeAtWorld(key: string, world: Point): void {
     const item = paletteItem(key);
     if (!item) return;
+    this.recents.record(key);
     this.store.addNodeAt(item, world.x - DEFAULT_NODE_WIDTH / 2, world.y - DEFAULT_NODE_HEIGHT / 2);
   }
 
@@ -589,20 +600,30 @@ export class CanvasComponent implements AfterViewInit {
     return this.isSelectedNode(node.id) || this.isConnectTarget(node.id) ? 2.5 : 1.5;
   }
 
-  edgeStroke(id: string): string {
-    return this.isSelectedEdge(id) ? this.pal().edgeSelected : this.pal().edge;
+  edgeStroke(id: string, presetStroke: string): string {
+    return this.isSelectedEdge(id) ? this.pal().edgeSelected : presetStroke;
   }
 
-  edgeStrokeWidth(id: string): number {
-    return this.isSelectedEdge(id) ? 2.5 : 1.8;
+  edgeStrokeWidth(id: string, presetWidth: number): number {
+    return this.isSelectedEdge(id) ? presetWidth + 0.7 : presetWidth;
   }
 
-  markerEnd(direction: string, selected: boolean): string | null {
-    return direction === 'none' ? null : `url(#as-arrow${selected ? '-sel' : ''})`;
+  /** ノード下段のキャプション（ホスト名があれば優先表示）。 */
+  nodeCaption(node: DiagramNode): string {
+    const network = node.network;
+    if (network?.hostname) return network.hostname;
+    return this.typeCaption(node.type);
   }
 
-  markerStart(direction: string, selected: boolean): string | null {
-    return direction === 'both' ? `url(#as-arrow${selected ? '-sel' : ''})` : null;
+  /** ホバーツールチップの本文。 */
+  nodeTooltip(node: DiagramNode): string {
+    const lines = [node.label];
+    const n = node.network;
+    if (n?.hostname) lines.push(`ホスト名: ${n.hostname}`);
+    if (n?.ipAddress) lines.push(`IP: ${n.ipAddress}${n.subnetMask ? ` ${n.subnetMask}` : ''}`);
+    if (n?.vlanId) lines.push(`VLAN: ${n.vlanId}`);
+    if (n?.vendor || n?.model) lines.push(`機器: ${[n.vendor, n.model].filter(Boolean).join(' ')}`);
+    return lines.join('\n');
   }
 
   labelLines(label: string): string[] {

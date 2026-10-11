@@ -1,9 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PALETTE, PaletteCategory, PaletteItem } from '../models/icon-registry';
+import {
+  PALETTE,
+  PaletteCategory,
+  PaletteItem,
+  iconFor,
+} from '../models/icon-registry';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { iconFor } from '../models/icon-registry';
 import { DEFAULT_CUSTOM_COLOR } from '../models/diagram.models';
+import { RecentItemsService } from '../services/recent-items.service';
 
 interface VisibleCategory extends PaletteCategory {
   filtered: PaletteItem[];
@@ -19,6 +24,7 @@ interface VisibleCategory extends PaletteCategory {
 })
 export class PaletteComponent {
   private readonly sanitizer = inject(DomSanitizer);
+  readonly recentItems = inject(RecentItemsService);
 
   readonly addRequest = output<PaletteItem>();
 
@@ -33,14 +39,27 @@ export class PaletteComponent {
     '#0891b2', '#2563eb', '#4f46e5', '#7c3aed', '#db2777', '#e11d48',
   ];
 
+  /** 検索語に一致するカテゴリ・項目（ラベルとキーワードの両方に対して部分一致）。 */
   readonly categories = computed<VisibleCategory[]>(() => {
     const query = this.search().trim().toLowerCase();
     return PALETTE.map(category => ({
       ...category,
-      filtered: category.items.filter(item =>
-        !query || item.label.toLowerCase().includes(query) || item.key.toLowerCase().includes(query)),
+      filtered: category.items.filter(item => this.matches(item, query)),
     })).filter(category => category.filtered.length > 0);
   });
+
+  readonly recent = computed<PaletteItem[]>(() => {
+    if (this.search().trim()) return [];
+    return this.recentItems.recent()
+      .map(key => PALETTE.flatMap(c => c.items).find(i => i.key === key))
+      .filter((item): item is PaletteItem => !!item);
+  });
+
+  private matches(item: PaletteItem, query: string): boolean {
+    if (!query) return true;
+    if (item.label.toLowerCase().includes(query) || item.key.toLowerCase().includes(query)) return true;
+    return (item.keywords ?? []).some(k => k.toLowerCase().includes(query));
+  }
 
   toggleCategory(id: string): void {
     this.collapsed.update(set => {

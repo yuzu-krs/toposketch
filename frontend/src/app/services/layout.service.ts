@@ -4,16 +4,18 @@ import { DiagramDocument, DiagramNode } from '../models/diagram.models';
 export interface LayoutOptions {
   horizontalGap: number;
   verticalGap: number;
+  /** レイヤーの方向: TB=上から下（既定）、LR=左から右 */
+  direction: 'TB' | 'LR';
 }
 
-const DEFAULT_OPTIONS: LayoutOptions = { horizontalGap: 70, verticalGap: 80 };
+const DEFAULT_OPTIONS: LayoutOptions = { horizontalGap: 70, verticalGap: 80, direction: 'TB' };
 
 /**
  * 階層型自動レイアウト（Sugiyama スタイルの簡略版）。
  * 1. DFS でバックエッジ（循環を戻す辺）を検出して除外し DAG 化
- * 2. 最長経路でレイヤー（行）を割り当て
+ * 2. 最長経路でレイヤーを割り当て
  * 3. 重心法（バリセンター）のスイープでレイヤー内の並びを改善
- * 4. レイヤー・ノード寸法から座標を割り当て
+ * 4. レイヤー・ノード寸法から重ならない座標を割り当て
  */
 @Injectable({ providedIn: 'root' })
 export class LayoutService {
@@ -31,7 +33,6 @@ export class LayoutService {
     const layers = this.assignLayers(doc.nodes.map(n => n.id), keptEdges);
     const order = this.orderWithinLayers(doc.nodes, keptEdges, layers);
 
-    // レイヤーごとの高さ・幅を計算して座標を割り当てる
     const maxLayer = Math.max(...layers.values());
     const byLayer = new Map<number, string[]>();
     for (const [id, layer] of layers) {
@@ -40,33 +41,37 @@ export class LayoutService {
       byLayer.set(layer, list);
     }
 
-    let y = 0;
-    const layerWidths: number[] = [];
-    const layerHeights: number[] = [];
-    for (let l = 0; l <= maxLayer; l++) {
-      const ids = order.get(l) ?? [];
-      const height = Math.max(DEFAULT_MIN_HEIGHT, ...ids.map(id => index.get(id)!.height));
-      const width = ids.reduce((sum, id) => sum + index.get(id)!.width, 0) + Math.max(0, ids.length - 1) * opts.horizontalGap;
-      layerWidths[l] = width;
-      layerHeights[l] = height;
-      y += height + opts.verticalGap;
-    }
-    const maxWidth = Math.max(0, ...layerWidths);
+    // レイヤー軸に沿った寸法（TB=height、LR=width）と、行方向の寸法
+    const layerAxis = (n: DiagramNode) => (opts.direction === 'LR' ? n.width : n.height);
+    const rowAxis = (n: DiagramNode) => (opts.direction === 'LR' ? n.height : n.width);
+    const crossGap = opts.direction === 'LR' ? opts.verticalGap : opts.horizontalGap;
+    const layerGap = opts.direction === 'LR' ? opts.horizontalGap : opts.verticalGap;
 
-    y = 0;
+    // レイヤーごとの寸法を計算
+    const layerSizes: number[] = [];
+    const rowSizes: number[] = [];
     for (let l = 0; l <= maxLayer; l++) {
       const ids = order.get(l) ?? [];
-      const x0 = (maxWidth - layerWidths[l]) / 2;
-      let x = x0;
+      layerSizes[l] = Math.max(40, ...ids.map(id => layerAxis(index.get(id)!)));
+      rowSizes[l] = ids.reduce((sum, id) => sum + rowAxis(index.get(id)!), 0) + Math.max(0, ids.length - 1) * crossGap;
+    }
+    const maxRowSize = Math.max(0, ...rowSizes);
+
+    // 座標の割り当て（primary=レイヤー軸、secondary=行軸）
+    let primary = 0;
+    for (let l = 0; l <= maxLayer; l++) {
+      const ids = order.get(l) ?? [];
+      let secondary = (maxRowSize - rowSizes[l]) / 2;
       for (const id of ids) {
         const node = index.get(id)!;
-        positions.set(id, {
-          x: Math.round(x),
-          y: Math.round(y + (layerHeights[l] - node.height) / 2),
-        });
-        x += node.width + opts.horizontalGap;
+        const layerOffset = primary + (layerSizes[l] - layerAxis(node)) / 2;
+        const value = opts.direction === 'LR'
+          ? { x: Math.round(layerOffset), y: Math.round(secondary) }
+          : { x: Math.round(secondary), y: Math.round(layerOffset) };
+        positions.set(id, value);
+        secondary += rowAxis(node) + crossGap;
       }
-      y += layerHeights[l] + opts.verticalGap;
+      primary += layerSizes[l] + layerGap;
     }
 
     return positions;
@@ -118,10 +123,6 @@ export class LayoutService {
     const layers = new Map<string, number>();
     for (const id of nodeIds) layers.set(id, 0);
 
-    const incoming = new Map<string, string[]>();
-    for (const id of nodeIds) incoming.set(id, []);
-    for (const e of edges) incoming.get(e.target)!.push(e.source);
-
     // 反復緩和。DAG なので高々 |V| 回で収束する。
     for (let iter = 0; iter < nodeIds.length + 1; iter++) {
       let changed = false;
@@ -151,10 +152,10 @@ export class LayoutService {
       list.push(node.id);
       order.set(l, list);
     }
-    // 初期順序は現在の y 座標で安定させる
+    // 初期順序は現在の座標で安定させる
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     for (const list of order.values()) {
-      list.sort((a, b) => nodeMap.get(a)!.y - nodeMap.get(b)!.y);
+      list.sort((a, b) => (opts_y(nodeMap.get(a)!) - opts_y(nodeMap.get(b)!)));
     }
 
     const neighborsOf = (id: string, layer: number): number[] => {
@@ -194,4 +195,7 @@ export class LayoutService {
   }
 }
 
-const DEFAULT_MIN_HEIGHT = 40;
+/** LR 方向でも初期順序は見た目上の y（行方向）で安定させる。 */
+function opts_y(node: DiagramNode): number {
+  return node.y;
+}

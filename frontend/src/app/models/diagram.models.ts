@@ -3,6 +3,47 @@
 export type EdgeStyle = 'solid' | 'dashed';
 export type EdgeDirection = 'forward' | 'both' | 'none';
 
+/** 接続線の種別（ネットワーク構成図向け）。 */
+export type EdgeConnectionType = 'ethernet' | 'fiber' | 'wifi' | 'vpn' | 'logical';
+
+/** 接続線の詳細属性（ポート・速度・VLAN など）。 */
+export interface EdgeConnection {
+  type: EdgeConnectionType;
+  /** 接続元ポート名（例: Gi0/1） */
+  sourcePort: string;
+  /** 接続先ポート名 */
+  targetPort: string;
+  /** 通信速度（例: 1Gbps） */
+  speed: string;
+  /** VLAN ID（例: 10、カンマ区切り可） */
+  vlanId: string;
+  /** Access / Trunk（空文字なら未設定） */
+  mode: '' | 'access' | 'trunk';
+  /** カスタム色（#RRGGBB。空文字なら種別の規定色） */
+  color: string;
+  /** 線幅（0 なら種別の規定幅） */
+  width: number;
+}
+
+/** ネットワーク機器・端末の設定情報。ノード種別に応じて使われる項目が変わる。 */
+export interface NodeNetworkInfo {
+  hostname?: string;
+  ipAddress?: string;
+  /** サブネットマスク / CIDR */
+  subnetMask?: string;
+  defaultGateway?: string;
+  vlanId?: string;
+  macAddress?: string;
+  /** メーカー（Cisco / Yamaha など） */
+  vendor?: string;
+  /** モデル名（RTX1210 / C9300 など） */
+  model?: string;
+  /** インターフェース情報（自由記述） */
+  interfaces?: string;
+  /** 備考 */
+  notes?: string;
+}
+
 export interface DiagramNode {
   id: string;
   /** コンポーネント種別キー（icon-registry のキー。'custom' は任意コンポーネント） */
@@ -19,6 +60,8 @@ export interface DiagramNode {
   groupId: string | null;
   /** 任意のキー・バリュー属性 */
   metadata: Record<string, string>;
+  /** ネットワーク機器・端末としての設定情報（任意） */
+  network?: NodeNetworkInfo;
 }
 
 export interface DiagramEdge {
@@ -28,6 +71,8 @@ export interface DiagramEdge {
   label: string;
   style: EdgeStyle;
   direction: EdgeDirection;
+  /** 接続の詳細属性 */
+  connection: EdgeConnection;
 }
 
 export interface DiagramGroup {
@@ -56,6 +101,12 @@ export const DEFAULT_NODE_HEIGHT = 64;
 export const DEFAULT_CUSTOM_COLOR = '#64748b';
 export const DEFAULT_GROUP_COLOR = '#6366f1';
 
+export const CONNECTION_TYPES: EdgeConnectionType[] = ['ethernet', 'fiber', 'wifi', 'vpn', 'logical'];
+
+export function defaultConnection(): EdgeConnection {
+  return { type: 'ethernet', sourcePort: '', targetPort: '', speed: '', vlanId: '', mode: '', color: '', width: 0 };
+}
+
 export function newId(): string {
   return crypto.randomUUID();
 }
@@ -74,8 +125,12 @@ export function createEmptyDocument(name = '無題の図'): DiagramDocument {
 export function cloneDocument(doc: DiagramDocument): DiagramDocument {
   return {
     ...doc,
-    nodes: doc.nodes.map(n => ({ ...n, metadata: { ...n.metadata } })),
-    edges: doc.edges.map(e => ({ ...e })),
+    nodes: doc.nodes.map(n => ({
+      ...n,
+      metadata: { ...n.metadata },
+      network: n.network ? { ...n.network } : undefined,
+    })),
+    edges: doc.edges.map(e => ({ ...e, connection: { ...e.connection } })),
     groups: doc.groups.map(g => ({ ...g })),
     background: { ...doc.background },
   };
@@ -92,6 +147,7 @@ export function isSelectionEmpty(selection: Selection): boolean {
 /**
  * 読み込み・インポートした JSON を検証して DiagramDocument に正規化する。
  * 不正な場合は日本語のエラーメッセージを伴う Error を投げる。
+ * 旧バージョン（connection / network 未対応）のデータも既定値で補完される。
  */
 export function normalizeDocument(raw: unknown): DiagramDocument {
   if (typeof raw !== 'object' || raw === null) {
@@ -130,6 +186,7 @@ export function normalizeDocument(raw: unknown): DiagramDocument {
       color: validColor(n['color']) ? String(n['color']) : DEFAULT_CUSTOM_COLOR,
       groupId: typeof n['groupId'] === 'string' ? n['groupId'] : null,
       metadata,
+      network: normalizeNetwork(n['network']),
     };
   });
 
@@ -172,6 +229,7 @@ export function normalizeDocument(raw: unknown): DiagramDocument {
       label: String(e['label'] ?? ''),
       style: e['style'] === 'dashed' ? 'dashed' : 'solid',
       direction: e['direction'] === 'both' || e['direction'] === 'none' ? e['direction'] : 'forward',
+      connection: normalizeConnection(e['connection']),
     });
   }
 
@@ -188,6 +246,48 @@ export function normalizeDocument(raw: unknown): DiagramDocument {
     groups,
     background: { grid: typeof grid === 'boolean' ? grid : true },
   };
+}
+
+function normalizeConnection(raw: unknown): EdgeConnection {
+  const base = defaultConnection();
+  if (typeof raw !== 'object' || raw === null) return base;
+  const c = raw as Record<string, unknown>;
+  const type = CONNECTION_TYPES.includes(c['type'] as EdgeConnectionType)
+    ? (c['type'] as EdgeConnectionType)
+    : 'ethernet';
+  const mode = c['mode'] === 'access' || c['mode'] === 'trunk' ? c['mode'] : '';
+  const width = Number(c['width']);
+  return {
+    type,
+    sourcePort: textOrEmpty(c['sourcePort']),
+    targetPort: textOrEmpty(c['targetPort']),
+    speed: textOrEmpty(c['speed']),
+    vlanId: textOrEmpty(c['vlanId']),
+    mode,
+    color: validColor(c['color']) ? String(c['color']) : '',
+    width: Number.isFinite(width) && width >= 0 && width <= 6 ? width : 0,
+  };
+}
+
+function normalizeNetwork(raw: unknown): NodeNetworkInfo | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const n = raw as Record<string, unknown>;
+  const info: NodeNetworkInfo = {};
+  const keys: (keyof NodeNetworkInfo)[] = [
+    'hostname', 'ipAddress', 'subnetMask', 'defaultGateway', 'vlanId',
+    'macAddress', 'vendor', 'model', 'interfaces', 'notes',
+  ];
+  for (const key of keys) {
+    const value = n[key];
+    if (typeof value === 'string' && value.trim()) {
+      info[key] = value;
+    }
+  }
+  return Object.keys(info).length ? info : undefined;
+}
+
+function textOrEmpty(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

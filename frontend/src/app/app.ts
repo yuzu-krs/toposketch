@@ -11,19 +11,30 @@ import { PaletteComponent } from './components/palette.component';
 import { CanvasComponent } from './components/canvas.component';
 import { PropertiesComponent } from './components/properties.component';
 import { OpenDialogComponent } from './components/open-dialog.component';
+import { NewDiagramDialogComponent } from './components/new-diagram-dialog.component';
 import { ToastsComponent } from './components/toasts.component';
 import { DiagramStore } from './services/diagram-store.service';
 import { DiagramApiService, DiagramDto } from './services/api.service';
 import { ToastService } from './services/toast.service';
 import { ExportService } from './services/export.service';
-import { createEmptyDocument, normalizeDocument } from './models/diagram.models';
+import { RecentItemsService } from './services/recent-items.service';
+import { normalizeDocument } from './models/diagram.models';
 import { PaletteItem } from './models/icon-registry';
+import { DiagramTemplate } from './models/diagram-templates';
 import { firstValueFrom } from 'rxjs';
 
 /** アプリケーションシェル：3 カラム構成 + グローバルショートカット + 保存フロー。 */
 @Component({
   selector: 'app-root',
-  imports: [ToolbarComponent, PaletteComponent, CanvasComponent, PropertiesComponent, OpenDialogComponent, ToastsComponent],
+  imports: [
+    ToolbarComponent,
+    PaletteComponent,
+    CanvasComponent,
+    PropertiesComponent,
+    OpenDialogComponent,
+    NewDiagramDialogComponent,
+    ToastsComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -33,12 +44,26 @@ export class App {
   private readonly api = inject(DiagramApiService);
   private readonly toasts = inject(ToastService);
   private readonly exporter = inject(ExportService);
+  private readonly recents = inject(RecentItemsService);
 
   readonly canvas = viewChild.required(CanvasComponent);
   readonly saving = signal(false);
   readonly openDialogVisible = signal(false);
+  readonly newDialogVisible = signal(false);
+  readonly paletteOpen = signal(true);
+  readonly propertiesOpen = signal(true);
 
   // ------------------------------------------------------------- ファイル操作
+
+  /** 保存直前に不整合（参照切れエッジ等）を正規化で除去する。 */
+  private sanitizeForSave(): { name: string; contentJson: string } | null {
+    const doc = this.store.doc();
+    const safe = normalizeDocument(JSON.parse(JSON.stringify(doc)));
+    if (safe.edges.length !== doc.edges.length || safe.nodes.length !== doc.nodes.length) {
+      this.toasts.info('参照が壊れた要素を除外して保存します。');
+    }
+    return { name: safe.name, contentJson: JSON.stringify(safe) };
+  }
 
   async save(): Promise<void> {
     if (this.saving()) return;
@@ -49,11 +74,11 @@ export class App {
     }
     this.saving.set(true);
     try {
-      const contentJson = JSON.stringify(doc);
+      const payload = this.sanitizeForSave()!;
       const id = this.store.diagramId();
       const saved = id
-        ? await firstValueFrom(this.api.update(id, doc.name, contentJson))
-        : await firstValueFrom(this.api.create(doc.name, contentJson));
+        ? await firstValueFrom(this.api.update(id, payload.name, payload.contentJson))
+        : await firstValueFrom(this.api.create(payload.name, payload.contentJson));
       this.store.markSaved(saved.id);
       this.toasts.success(`「${saved.name}」を保存しました。`);
     } catch (error) {
@@ -63,11 +88,18 @@ export class App {
     }
   }
 
+  /** 新規作成：未保存変更の確認を経てテンプレート選択ダイアログを開く。 */
   newDiagram(): void {
     if (this.store.dirty() && !confirm('未保存の変更があります。破棄して新しい図を作成しますか？')) {
       return;
     }
-    this.store.load(createEmptyDocument(), null);
+    this.newDialogVisible.set(true);
+  }
+
+  onTemplateSelected(template: DiagramTemplate): void {
+    this.newDialogVisible.set(false);
+    this.store.load(template.create(), null);
+    setTimeout(() => this.canvas().fit());
   }
 
   onOpened(dto: DiagramDto): void {
@@ -94,6 +126,7 @@ export class App {
   }
 
   onPaletteAdd(item: PaletteItem): void {
+    this.recents.record(item.key);
     this.canvas().addNodeAtCenter(item.key);
   }
 

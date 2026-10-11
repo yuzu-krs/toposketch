@@ -1,24 +1,34 @@
 # ArchSketch
 
-技術アーキテクチャ図を作成・編集・保存できる Web アプリケーション。システム構成図の設計・共有を高速化するためのローカル開発環境で完結するツールです。
+技術アーキテクチャ図とネットワーク構成図を作成・編集・保存できる Web アプリケーション。ローカル開発環境で完結するツールです。
 
 | レイヤー | 技術スタック |
 | --- | --- |
 | フロントエンド | Angular 20 / TypeScript / Tailwind CSS |
-| バックエンド | ASP.NET Core Web API (.NET 10) / C# |
+| バックエンド | ASP.NET Core Web API (.NET 10) / C#（3層レイヤード） |
 | データベース | SQL Server 2022 / ストアドプロシージャ |
 
 ## 主な機能
 
+### 構成図全般
+
 - **ドラッグ＆ドロップ編集** — 左パレットからキャンバスへコンポーネントをドロップ、クリックでも追加
-- **技術コンポーネント** — Angular / ASP.NET Core / SQL Server / Azure / AWS / Docker / Kubernetes など 40+ のアイコン
 - **任意コンポーネント** — 表示名とアクセント色を指定したカスタムノードを作成可能
-- **接続とラベル** — ノード端のポートからドラッグして接続。ラベル・実線/点線・矢印方向を編集
-- **グループ化・自動レイアウト** — 複数ノードのグループ化、階層型（Sugiyama 方式の簡略版）自動整列
+- **グループ化・自動レイアウト** — VLAN / サブネット / 拠点 / クラウド環境などのグループ化、階層型自動整列（縦・横）
 - **ズーム・パン・Undo / Redo** — ホイールズーム、Space+ドラッグ／中ボタンでパン、100 ステップの履歴
 - **保存・読み込み・削除** — REST API 経由で SQL Server に永続化（開発用 InMemory モードも搭載）
 - **エクスポート** — JSON / SVG / PNG（2倍解像度）。JSON は再インポート可能
 - **ダークモード / ライトモード** — 設定はブラウザに保存。エクスポート画像にも反映
+- **左右パネルの開閉** — ツールバーのパネルアイコンでキャンバスを最大化
+
+### ネットワーク構成図
+
+- **ネットワークコンポーネント 26 種** — ルーター / L2・L3 スイッチ / FW / 無線AP / WLC / ハブ / LB / VPN GW / IDS・IPS / サーバー / VM / NAS / PC / ノートPC / スマホ / プリンター / Internet / LAN / WAN / VLAN / サブネット / DMZ / VPNトンネル / クラウドNW / DNS / DHCP
+- **ベンダー機器の表現** — ホスト名・IP・メーカー（Cisco / Yamaha 等）・モデル名をノードのプロパティに設定可能
+- **接続線の詳細設定** — 接続種別（イーサネット / 光ファイバー / Wi-Fi / VPN / 論理）、ポート名（接続元・先）、通信速度、VLAN ID、Access / Trunk、色・太さ、矢印の方向。中点に補足情報を自動表示
+- **ノードのネットワーク設定** — 機器種別に応じてホスト名 / IP / サブネットマスク / GW / VLAN / MAC / メーカー / モデル / インターフェース / 備考を編集（キャンバスのキャプションにホスト名を表示、ホバーで詳細ツールチップ）
+- **構成図テンプレート** — 新規作成時に「物理ネットワーク構成図 / 論理ネットワーク構成図 / システムアーキテクチャ図 / クラウド構成図 / 空」から選択
+- **パレット改善** — キーワード検索（日本語別名・略語対応）と「最近使った」表示
 
 ## 画面構成
 
@@ -129,24 +139,37 @@ $env:Storage__Provider = 'SqlServer'; dotnet run
 ```jsonc
 {
   "schema": 1,
-  "name": "システム構成図",
+  "name": "ネットワーク構成図",
   "nodes": [
     {
-      "id": "uuid", "type": "angular", "label": "SPA フロントエンド",
+      "id": "uuid", "type": "router", "label": "RTX ルーター",
       "x": 280, "y": 120, "width": 148, "height": 64,
-      "color": "#dd0031", "groupId": null, "metadata": { "言語": "TypeScript" }
+      "color": "#075985", "groupId": null, "metadata": {},
+      "network": {
+        "hostname": "tokyo-rtx", "ipAddress": "192.168.0.1",
+        "vendor": "Yamaha", "model": "RTX1210"
+      }
     }
   ],
   "edges": [
-    { "id": "uuid", "source": "...", "target": "...", "label": "REST",
-      "style": "solid", "direction": "forward" }
+    {
+      "id": "uuid", "source": "...", "target": "...", "label": "uplink",
+      "style": "solid", "direction": "forward",
+      "connection": {
+        "type": "fiber",              // ethernet | fiber | wifi | vpn | logical
+        "sourcePort": "ge2", "targetPort": "ge1",
+        "speed": "1Gbps", "vlanId": "10,20",
+        "mode": "trunk",              // '' | access | trunk
+        "color": "", "width": 0       // 空/0 で種別の既定値
+      }
+    }
   ],
-  "groups": [ { "id": "uuid", "label": "Azure", "color": "#0078d4" } ],
+  "groups": [ { "id": "uuid", "label": "VLAN 10 営業", "color": "#16a34a" } ],
   "background": { "grid": true }
 }
 ```
 
-バックエンドは本文を「有効な JSON であること」のみ検証し、スキーマ解釈はフロントエンド（`normalizeDocument`）が担います。フィールドの追加・変更がバックエンドに波及しない保守性重視の設計です。
+バックエンドは本文を「有効な JSON であること」のみ検証し、スキーマ解釈はフロントエンド（`normalizeDocument`）が担います。旧データ（`network` / `connection` なし）は既定値で補完されるため後方互換があります。
 
 ## テストとビルド
 
@@ -165,7 +188,7 @@ npx ng test --watch=false --browsers=ChromeHeadless
 テスト内容:
 
 - バックエンド 24 件 — Service 単体（検証・正規化・DTO変換）/ リポジトリ CRUD / HTTP API 統合（往返し・検証・404・400）
-- フロントエンド 30 件 — 状態ストア（履歴・ジェスチャ・グループ・複製）/ 自動レイアウト / JSON 正規化 / アイコンレジストリ / エクスポート SVG 組み立て
+- フロントエンド 50 件 — 状態ストア / 自動レイアウト（縦・横・循環）/ JSON 正規化（新旧スキーマ）/ 接続スタイル / 構成図テンプレート / アイコンレジストリ / エクスポート
 
 ## バックエンドのアーキテクチャ（3層レイヤード）
 
@@ -211,6 +234,7 @@ toposketch/
 | 起動時に DB 初期化エラー | SQL Server (MSSQLSERVER) サービスが実行中か確認。Windows 認証で CREATE DATABASE 権限が必要。回避するには `Storage:Provider` を `InMemory` に |
 | 保存しても再起動後に消える | InMemory モードで動作しています。SQL Server モードに切り替えてください |
 | ポート競合 | `Properties/launchSettings.json`（5080）と `proxy.conf.json` / `ng serve --port`（4200）を変更 |
+| トンネル（proxlane 等）経由で接続拒否される | `ng serve` が IPv6（::1）のみで待受する場合があるため `npx ng serve --port 4200 --host 127.0.0.1` で IPv4 に固定。さらに Vite のホスト検証対策として環境変数 `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=.proxlane.com`（トンネルのドメイン）を設定 |
 | node_modules の同期が遅い | OneDrive 配下のため、`frontend/node_modules` を OneDrive の同期対象から除外することを推奨 |
 
 ## 拡張ポイント

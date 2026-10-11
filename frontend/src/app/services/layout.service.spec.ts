@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { LayoutService } from './layout.service';
-import { DiagramDocument } from '../models/diagram.models';
+import { DiagramDocument, EdgeConnection, defaultConnection } from '../models/diagram.models';
+
+function conn(): EdgeConnection {
+  return defaultConnection();
+}
 
 function makeDoc(): DiagramDocument {
   const node = (id: string, x: number, y: number) => ({
@@ -20,10 +24,10 @@ function makeDoc(): DiagramDocument {
     name: 'テスト',
     nodes: [node('a', 900, 900), node('b', 0, 0), node('c', 0, 500), node('d', 700, 300)],
     edges: [
-      { id: 'e1', source: 'a', target: 'b', label: '', style: 'solid' as const, direction: 'forward' as const },
-      { id: 'e2', source: 'a', target: 'c', label: '', style: 'solid' as const, direction: 'forward' as const },
-      { id: 'e3', source: 'b', target: 'd', label: '', style: 'solid' as const, direction: 'forward' as const },
-      { id: 'e4', source: 'c', target: 'd', label: '', style: 'solid' as const, direction: 'forward' as const },
+      { id: 'e1', source: 'a', target: 'b', label: '', style: 'solid' as const, direction: 'forward' as const, connection: conn() },
+      { id: 'e2', source: 'a', target: 'c', label: '', style: 'solid' as const, direction: 'forward' as const, connection: conn() },
+      { id: 'e3', source: 'b', target: 'd', label: '', style: 'solid' as const, direction: 'forward' as const, connection: conn() },
+      { id: 'e4', source: 'c', target: 'd', label: '', style: 'solid' as const, direction: 'forward' as const, connection: conn() },
     ],
     groups: [],
     background: { grid: true },
@@ -61,7 +65,7 @@ describe('LayoutService', () => {
   it('循環するグラフでも停止して結果を返す', () => {
     const doc = makeDoc();
     // d -> a を足して循環を作る
-    doc.edges.push({ id: 'e5', source: 'd', target: 'a', label: '', style: 'solid', direction: 'forward' });
+    doc.edges.push({ id: 'e5', source: 'd', target: 'a', label: '', style: 'solid', direction: 'forward', connection: conn() });
     const positions = service.run(doc);
     expect(positions.size).toBe(4);
     for (const p of positions.values()) {
@@ -75,5 +79,28 @@ describe('LayoutService', () => {
     doc.nodes = [];
     doc.edges = [];
     expect(service.run(doc).size).toBe(0);
+  });
+
+  it('LR（左から右）方向では x がレイヤー軸になる', () => {
+    const positions = service.run(makeDoc(), { direction: 'LR' });
+    expect(positions.size).toBe(4);
+    // a はルート → 最も左
+    const xOrder = [positions.get('a')!.x, positions.get('b')!.x, positions.get('c')!.x, positions.get('d')!.x];
+    expect(xOrder[0]).toBeLessThan(xOrder[3]);
+    expect(xOrder[1]).toBeLessThan(xOrder[3]);
+    // 同一レイヤーの b, c は y 方向に離れる
+    const b = positions.get('b')!;
+    const c = positions.get('c')!;
+    expect(b.x).toBe(c.x);
+    expect(Math.abs(b.y - c.y)).toBeGreaterThanOrEqual(64);
+  });
+
+  it('TB と LR で座標系が入れ替わる', () => {
+    const doc = makeDoc();
+    const tb = service.run(doc, { direction: 'TB' });
+    const lr = service.run(doc, { direction: 'LR' });
+    // TB では a の y が最小、LR では a の x が最小
+    expect(tb.get('a')!.y).toBeLessThan(tb.get('d')!.y);
+    expect(lr.get('a')!.x).toBeLessThan(lr.get('d')!.x);
   });
 });

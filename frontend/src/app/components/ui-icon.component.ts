@@ -29,6 +29,11 @@ const UI_ICONS: Record<string, string> = {
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  'panel-left': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9.5 4.5v15"/><path d="M13 9h5"/><path d="M13 13h5"/>',
+  'panel-right': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M14.5 4.5v15"/><path d="M6 9h5"/><path d="M6 13h5"/>',
+  'layout-tb': '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+  'layout-lr': '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+  template: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18"/><path d="M9 8v13"/>',
 };
 
 @Component({
