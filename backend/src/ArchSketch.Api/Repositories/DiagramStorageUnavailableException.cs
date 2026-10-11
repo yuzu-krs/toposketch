@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace ArchSketch.Api.Storage;
+namespace ArchSketch.Api.Repositories;
 
 /// <summary>SQL Server に接続できない等、ストレージ層が利用不可の状態を表す例外。</summary>
 public sealed class DiagramStorageUnavailableException : Exception

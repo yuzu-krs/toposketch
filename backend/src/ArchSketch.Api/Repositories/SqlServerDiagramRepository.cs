@@ -1,10 +1,11 @@
 using System.Data;
+using ArchSketch.Api.Entities;
 using Microsoft.Data.SqlClient;
 
-namespace ArchSketch.Api.Storage;
+namespace ArchSketch.Api.Repositories;
 
 /// <summary>
-/// SQL Server 上のストアドプロシージャを介して構成図を永続化するリポジトリ。
+/// SQL Server 上のストアドプロシージャを介して構成図を永続化する Data Access Layer の実装。
 /// すべてのデータアクセスは db/03_create_procedures.sql で定義された
 /// dbo.usp_Diagrams_* プロシージャ呼び出しのみで行う。
 /// </summary>

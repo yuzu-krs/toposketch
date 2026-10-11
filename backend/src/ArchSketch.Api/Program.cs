@@ -1,9 +1,11 @@
-using ArchSketch.Api.Storage;
+using ArchSketch.Api.Repositories;
+using ArchSketch.Api.Services;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Presentation Layer
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
@@ -11,6 +13,11 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
           .AllowAnyHeader()
           .AllowAnyMethod()));
 
+// Business Logic Layer
+builder.Services.AddScoped<IDiagramService, DiagramService>();
+builder.Services.AddScoped<IHealthService, HealthService>();
+
+// Data Access Layer
 var storageProvider = builder.Services.AddDiagramStorage(builder.Configuration);
 
 var app = builder.Build();

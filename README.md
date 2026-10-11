@@ -164,8 +164,20 @@ npx ng test --watch=false --browsers=ChromeHeadless
 
 テスト内容:
 
-- バックエンド 17 件 — リポジトリ CRUD / HTTP API の往返し・検証・404・400
+- バックエンド 24 件 — Service 単体（検証・正規化・DTO変換）/ リポジトリ CRUD / HTTP API 統合（往返し・検証・404・400）
 - フロントエンド 30 件 — 状態ストア（履歴・ジェスチャ・グループ・複製）/ 自動レイアウト / JSON 正規化 / アイコンレジストリ / エクスポート SVG 組み立て
+
+## バックエンドのアーキテクチャ（3層レイヤード）
+
+処理の流れ: **Controller → Service → Repository → Stored Procedure → SQL Server**
+
+| レイヤー |場所 | 責務 |
+| --- | --- | --- |
+| Presentation | `Controllers/` | HTTP 入出力（ルーティング・ステータスコード・ProblemDetails）のみ。業務ロジックを持たない |
+| Business Logic | `Services/` | リクエスト検証・正規化（名前trim等）・Entity⇔DTO変換。`IDiagramService` / `IHealthService` |
+| Data Access | `Repositories/` | ストアドプロシージャ呼び出しのみ（`SqlServerDiagramRepository`）、開発用 `InMemoryDiagramRepository`、起動時のDB初期化 |
+
+依存関係は DI で管理し、非同期はすべて `async/await`。API 入出力は `Dtos/`、DB 上のデータ表現は `Entities/`、永続化の抽象は `Repositories/IDiagramRepository.cs` に分離しています。検証エラーは `DiagramValidationException` として Service から Controller へ伝播し、Controller が 400 に変換します。
 
 ## プロジェクト構成
 
@@ -173,10 +185,13 @@ npx ng test --watch=false --browsers=ChromeHeadless
 toposketch/
 ├── backend/
 │   ├── ArchSketch.slnx
-│   ├── src/ArchSketch.Api/           # ASP.NET Core Web API
-│   │   ├── Controllers/              # DiagramsController / HealthController / DTO と検証
-│   │   └── Storage/                  # リポジトリ抽象 + SqlServer / InMemory 実装 + DB 初期化
-│   └── tests/ArchSketch.Api.Tests/   # xUnit（WebApplicationFactory による統合テスト）
+│   ├── src/ArchSketch.Api/           # ASP.NET Core Web API（3層レイヤード）
+│   │   ├── Controllers/              # Presentation Layer
+│   │   ├── Services/                 # Business Logic Layer
+│   │   ├── Repositories/             # Data Access Layer（SP呼び出し / InMemory / DB初期化）
+│   │   ├── Entities/                 # DB データの表現（Diagram / DiagramSummary）
+│   │   └── Dtos/                     # API 入出力コントラクト
+│   └── tests/ArchSketch.Api.Tests/   # xUnit（Service 単体 + WebApplicationFactory 統合）
 ├── db/                               # SQL スクリプト（単一の真実の情報源。API に埋め込み）
 │   ├── 01_create_database.sql
 │   ├── 02_create_tables.sql

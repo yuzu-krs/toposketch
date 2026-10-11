@@ -1,6 +1,11 @@
-namespace ArchSketch.Api.Storage;
+using ArchSketch.Api.Entities;
 
-/// <summary>構成図ドキュメントの永続化を担うリポジトリの抽象。</summary>
+namespace ArchSketch.Api.Repositories;
+
+/// <summary>
+/// 構成図ドキュメントの永続化を担う Data Access Layer の抽象。
+/// 実装は SQL Server（ストアドプロシージャ）または開発用 InMemory。
+/// </summary>
 public interface IDiagramRepository
 {
     /// <summary>保存日時の新しい順に一覧を返す。</summary>
@@ -18,22 +23,6 @@ public interface IDiagramRepository
     /// <summary>削除する。削除できた場合 true。</summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>バックエンドのストレージが利用可能かどうか（ヘルスチェック用）。</summary>
+    /// <summary>ストレージが利用可能かどうか（ヘルスチェック用）。</summary>
     Task<bool> IsHealthyAsync(CancellationToken cancellationToken = default);
 }
-
-/// <summary>構成図の完全なレコード。</summary>
-public sealed record Diagram(
-    Guid Id,
-    string Name,
-    string ContentJson,
-    DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
-
-/// <summary>一覧表示用のサマリ（JSON本文を含まない）。</summary>
-public sealed record DiagramSummary(
-    Guid Id,
-    string Name,
-    DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc,
-    long ContentLengthChars);

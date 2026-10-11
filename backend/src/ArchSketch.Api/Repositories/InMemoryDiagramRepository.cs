@@ -1,4 +1,6 @@
-namespace ArchSketch.Api.Storage;
+using ArchSketch.Api.Entities;
+
+namespace ArchSketch.Api.Repositories;
 
 /// <summary>
 /// ストレージとしてメモリを使用する開発用リポジトリ。

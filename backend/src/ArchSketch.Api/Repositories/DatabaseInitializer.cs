@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 
-namespace ArchSketch.Api.Storage;
+namespace ArchSketch.Api.Repositories;
 
 /// <summary>
 /// SQL Server をストレージに使う際、起動時に db/*.sql（埋め込みリソース）を

@@ -1,4 +1,4 @@
-using ArchSketch.Api.Storage;
+using ArchSketch.Api.Repositories;
 using Xunit;
 
 namespace ArchSketch.Api.Tests;

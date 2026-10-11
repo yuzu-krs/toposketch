@@ -1,6 +1,6 @@
-namespace ArchSketch.Api.Storage;
+namespace ArchSketch.Api.Repositories;
 
-/// <summary>ストレージ実装の登録を行う拡張メソッド。構成は appsettings.json の Storage セクション。</summary>
+/// <summary>Data Access Layer の登録を行う拡張メソッド。構成は appsettings.json の Storage セクション。</summary>
 public static class StorageSetup
 {
     /// <summary>

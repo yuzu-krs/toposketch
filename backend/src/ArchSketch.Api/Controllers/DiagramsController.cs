@@ -1,27 +1,31 @@
-using ArchSketch.Api.Storage;
+using ArchSketch.Api.Dtos;
+using ArchSketch.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArchSketch.Api.Controllers;
 
+/// <summary>
+/// Presentation Layer。HTTP の入出力（ルーティング・ステータスコード・ProblemDetails）に専念し、
+/// 業務ロジックは IDiagramService へ委譲する。
+/// </summary>
 [ApiController]
 [Route("api/diagrams")]
 [Produces("application/json")]
-public sealed class DiagramsController(IDiagramRepository repository) : ControllerBase
+public sealed class DiagramsController(IDiagramService service) : ControllerBase
 {
     /// <summary>保存済み構成図の一覧（更新日の新しい順）。</summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DiagramSummaryDto>>> List(CancellationToken cancellationToken)
     {
-        var summaries = await repository.ListAsync(cancellationToken);
-        return Ok(summaries.Select(ToDto).ToList());
+        return Ok(await service.ListAsync(cancellationToken));
     }
 
     /// <summary>指定IDの構成図を本文込みで取得する。</summary>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DiagramDto>> Get(Guid id, CancellationToken cancellationToken)
     {
-        var diagram = await repository.GetAsync(id, cancellationToken);
-        return diagram is null ? NotFound() : Ok(ToDto(diagram));
+        var diagram = await service.GetAsync(id, cancellationToken);
+        return diagram is null ? NotFound() : Ok(diagram);
     }
 
     /// <summary>新しい構成図を作成する。</summary>
@@ -30,14 +34,15 @@ public sealed class DiagramsController(IDiagramRepository repository) : Controll
         [FromBody] CreateDiagramRequest request,
         CancellationToken cancellationToken)
     {
-        var errors = DiagramValidation.Validate(request.Name, request.ContentJson, requireContent: true);
-        if (errors.Count > 0)
+        try
         {
-            return ValidationProblem(errors);
+            var created = await service.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
         }
-
-        var created = await repository.CreateAsync(request.Name!.Trim(), request.ContentJson!, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = created.Id }, ToDto(created));
+        catch (DiagramValidationException ex)
+        {
+            return ValidationProblem(ex.Errors);
+        }
     }
 
     /// <summary>既存の構成図を更新する。</summary>
@@ -47,16 +52,14 @@ public sealed class DiagramsController(IDiagramRepository repository) : Controll
         [FromBody] UpdateDiagramRequest request,
         CancellationToken cancellationToken)
     {
-        var errors = DiagramValidation.Validate(request.Name, request.ContentJson, requireContent: true);
-        if (errors.Count > 0)
-        {
-            return ValidationProblem(errors);
-        }
-
         try
         {
-            var updated = await repository.UpdateAsync(id, request.Name!.Trim(), request.ContentJson!, cancellationToken);
-            return Ok(ToDto(updated));
+            var updated = await service.UpdateAsync(id, request, cancellationToken);
+            return Ok(updated);
+        }
+        catch (DiagramValidationException ex)
+        {
+            return ValidationProblem(ex.Errors);
         }
         catch (KeyNotFoundException)
         {
@@ -68,17 +71,11 @@ public sealed class DiagramsController(IDiagramRepository repository) : Controll
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await repository.DeleteAsync(id, cancellationToken);
+        var deleted = await service.DeleteAsync(id, cancellationToken);
         return deleted ? NoContent() : NotFound();
     }
 
-    private static DiagramDto ToDto(Diagram diagram) =>
-        new(diagram.Id, diagram.Name, diagram.ContentJson, diagram.CreatedAtUtc, diagram.UpdatedAtUtc);
-
-    private static DiagramSummaryDto ToDto(DiagramSummary summary) =>
-        new(summary.Id, summary.Name, summary.CreatedAtUtc, summary.UpdatedAtUtc, summary.ContentLengthChars);
-
-    private ActionResult ValidationProblem(List<string> errors) =>
+    private ActionResult ValidationProblem(IReadOnlyList<string> errors) =>
         BadRequest(new ProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
