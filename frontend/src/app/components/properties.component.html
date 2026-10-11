@@ -1,0 +1,197 @@
+<div class="as-scroll flex h-full flex-col gap-5 overflow-y-auto bg-white p-4 dark:bg-slate-900">
+  <!-- 単一ノード -->
+  @if (selectedNode(); as node) {
+    <section>
+      <h3 class="prop-heading">ノード</h3>
+      <label class="prop-label">表示名</label>
+      <input #labelInput type="text" [value]="node.label" (change)="store.patchNode(node.id, { label: labelInput.value })" class="prop-input" />
+
+      <label class="prop-label mt-3">種別</label>
+      <div class="rounded-md bg-slate-100 px-2.5 py-1.5 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        {{ typeCaption(node.type) }}
+      </div>
+
+      <label class="prop-label mt-3">アクセント色</label>
+      <div class="flex flex-wrap items-center gap-1.5">
+        @for (color of PRESET_COLORS; track color) {
+          <button
+            class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+            [style.background]="color"
+            [class.border-transparent]="node.color !== color"
+            [class.ring-2]="node.color === color"
+            [class.ring-indigo-400]="node.color === color"
+            (click)="store.patchNode(node.id, { color })"
+            [title]="color"
+          ></button>
+        }
+        <input
+          type="color"
+          [value]="node.color"
+          (change)="store.patchNode(node.id, { color: $any($event.target).value })"
+          class="h-6 w-8 cursor-pointer rounded border border-slate-300 bg-transparent dark:border-slate-600"
+          title="独自の色"
+        />
+      </div>
+    </section>
+
+    <section>
+      <h3 class="prop-heading">位置とサイズ</h3>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="prop-label">X</label>
+          <input type="number" class="prop-input as-number" [value]="node.x" (change)="store.patchNode(node.id, { x: num($any($event.target).value) })" />
+        </div>
+        <div>
+          <label class="prop-label">Y</label>
+          <input type="number" class="prop-input as-number" [value]="node.y" (change)="store.patchNode(node.id, { y: num($any($event.target).value) })" />
+        </div>
+        <div>
+          <label class="prop-label">幅</label>
+          <input type="number" class="prop-input as-number" [value]="node.width" (change)="store.patchNode(node.id, { width: atLeast($any($event.target).value, 80) })" />
+        </div>
+        <div>
+          <label class="prop-label">高さ</label>
+          <input type="number" class="prop-input as-number" [value]="node.height" (change)="store.patchNode(node.id, { height: atLeast($any($event.target).value, 40) })" />
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3 class="prop-heading">グループ</h3>
+      <select class="prop-input" [value]="node.groupId ?? ''" (change)="setNodeGroup($any($event.target).value)">
+        <option value="">なし</option>
+        @for (group of store.groups(); track group.id) {
+          <option [value]="group.id">{{ group.label }}</option>
+        }
+      </select>
+    </section>
+
+    <section>
+      <h3 class="prop-heading">メタデータ</h3>
+      @for (entry of metadataEntries(); track entry[0]) {
+        <div class="mb-1.5 flex items-center gap-1.5">
+          <span class="w-20 shrink-0 truncate text-xs font-medium text-slate-500 dark:text-slate-400" [title]="entry[0]">{{ entry[0] }}</span>
+          <input type="text" class="prop-input flex-1" [value]="entry[1]" (change)="setMetadataValue(entry[0], $any($event.target).value)" />
+          <button class="prop-x-btn" title="削除" (click)="removeMetadata(entry[0])">✕</button>
+        </div>
+      }
+      <div class="flex items-center gap-1.5">
+        <input
+          type="text"
+          placeholder="新しいキー"
+          class="prop-input w-20"
+          [ngModel]="metadataDraft()"
+          (ngModelChange)="metadataDraft.set($event)"
+          (keydown.enter)="addMetadata()"
+        />
+        <button class="prop-add-btn" (click)="addMetadata()" [disabled]="!metadataDraft().trim()">追加</button>
+      </div>
+    </section>
+  }
+
+  <!-- 単一エッジ -->
+  @if (selectedEdge(); as edge) {
+    <section>
+      <h3 class="prop-heading">接続</h3>
+      <label class="prop-label">ラベル</label>
+      <input #edgeLabel type="text" [value]="edge.label" (change)="store.patchEdge(edge.id, { label: edgeLabel.value })" class="prop-input" />
+
+      <label class="prop-label mt-3">線種</label>
+      <select class="prop-input" [value]="edge.style" (change)="store.patchEdge(edge.id, { style: $any($event.target).value })">
+        <option value="solid">実線</option>
+        <option value="dashed">点線</option>
+      </select>
+
+      <label class="prop-label mt-3">矢印</label>
+      <select class="prop-input" [value]="edge.direction" (change)="store.patchEdge(edge.id, { direction: $any($event.target).value })">
+        <option value="forward">片方向 (→)</option>
+        <option value="both">双方向 (↔)</option>
+        <option value="none">なし (—)</option>
+      </select>
+    </section>
+  }
+
+  <!-- 単一グループ -->
+  @if (selectedGroup(); as group) {
+    <section>
+      <h3 class="prop-heading">グループ</h3>
+      <label class="prop-label">ラベル</label>
+      <input #groupLabel type="text" [value]="group.label" (change)="store.patchGroup(group.id, { label: groupLabel.value })" class="prop-input" />
+
+      <label class="prop-label mt-3">色</label>
+      <div class="flex flex-wrap items-center gap-1.5">
+        @for (color of PRESET_COLORS; track color) {
+          <button
+            class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+            [style.background]="color"
+            [class.border-transparent]="group.color !== color"
+            [class.ring-2]="group.color === color"
+            [class.ring-indigo-400]="group.color === color"
+            (click)="store.patchGroup(group.id, { color })"
+            [title]="color"
+          ></button>
+        }
+        <input
+          type="color"
+          [value]="group.color"
+          (change)="store.patchGroup(group.id, { color: $any($event.target).value })"
+          class="h-6 w-8 cursor-pointer rounded border border-slate-300 bg-transparent dark:border-slate-600"
+        />
+      </div>
+    </section>
+  }
+
+  <!-- 複数選択 -->
+  @if (multiCount() > 0) {
+    <section>
+      <h3 class="prop-heading">選択中の要素</h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400">{{ multiCount() }} 個の要素を選択中</p>
+      <div class="mt-3 flex flex-col gap-2">
+        <button class="prop-action-btn" (click)="store.groupSelection()">グループ化 (Ctrl+G)</button>
+        <button class="prop-action-btn" (click)="store.ungroupSelection()">グループ解除</button>
+        <button class="prop-action-btn" (click)="store.duplicateSelection()">複製 (Ctrl+D)</button>
+        <button class="prop-action-btn danger" (click)="store.deleteSelection()">削除 (Delete)</button>
+      </div>
+    </section>
+  }
+
+  <!-- 未選択：図の設定 -->
+  @if (mode().kind === 'empty') {
+    <section>
+      <h3 class="prop-heading">図の設定</h3>
+      <label class="prop-label">図の名前</label>
+      <input #docName type="text" [value]="store.name()" (change)="rename(docName.value)" class="prop-input" />
+
+      <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <input type="checkbox" [checked]="store.doc().background.grid" (change)="setGrid($any($event.target).checked)" class="accent-indigo-600" />
+        背景グリッドを表示
+      </label>
+    </section>
+
+    <section>
+      <h3 class="prop-heading">図の情報</h3>
+      <dl class="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+        <div class="flex justify-between"><dt>ノード数</dt><dd>{{ store.nodes().length }}</dd></div>
+        <div class="flex justify-between"><dt>エッジ数</dt><dd>{{ store.edges().length }}</dd></div>
+        <div class="flex justify-between"><dt>グループ数</dt><dd>{{ store.groups().length }}</dd></div>
+        <div class="flex justify-between"><dt>保存状態</dt><dd>{{ store.diagramId() ? (store.dirty() ? '未保存の変更あり' : '保存済み') : '未保存' }}</dd></div>
+      </dl>
+    </section>
+
+    <section>
+      <h3 class="prop-heading">ショートカット</h3>
+      <dl class="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+        <div class="flex justify-between"><dt>元に戻す / やり直し</dt><dd class="font-mono">Ctrl+Z / Ctrl+Y</dd></div>
+        <div class="flex justify-between"><dt>複製</dt><dd class="font-mono">Ctrl+D</dd></div>
+        <div class="flex justify-between"><dt>グループ化 / 解除</dt><dd class="font-mono">Ctrl+G / Ctrl+Shift+G</dd></div>
+        <div class="flex justify-between"><dt>保存</dt><dd class="font-mono">Ctrl+S</dd></div>
+        <div class="flex justify-between"><dt>全選択</dt><dd class="font-mono">Ctrl+A</dd></div>
+        <div class="flex justify-between"><dt>削除</dt><dd class="font-mono">Delete</dd></div>
+        <div class="flex justify-between"><dt>ズーム</dt><dd class="font-mono">ホイール / + / -</dd></div>
+        <div class="flex justify-between"><dt>全体表示 / 100%</dt><dd class="font-mono">0 / 1</dd></div>
+        <div class="flex justify-between"><dt>パン</dt><dd class="font-mono">Space + ドラッグ / 中ボタン</dd></div>
+        <div class="flex justify-between"><dt>ラベル編集</dt><dd class="font-mono">ダブルクリック</dd></div>
+      </dl>
+    </section>
+  }
+</div>

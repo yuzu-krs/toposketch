@@ -1,0 +1,11 @@
+# 行末をリポジトリ内では LF に統一（チェックアウト時は OS 既定）
+* text=auto
+
+# Windows 向けファイルは常に CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# バイナリ
+*.png binary
+*.jpg binary
+*.ico binary

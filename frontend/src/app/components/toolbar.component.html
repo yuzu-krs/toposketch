@@ -1,0 +1,109 @@
+<div
+  class="flex h-12 shrink-0 items-center gap-1 border-b border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+>
+  <!-- ブランドと図名 -->
+  <div class="mr-1 flex items-center gap-2">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="1" y="1" width="22" height="22" rx="5" fill="#4f46e5" />
+      <path d="M12 5 18.5 8.75v6.5L12 19 5.5 15.25v-6.5Z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" />
+      <path d="M5.5 8.75 12 12.5l6.5-3.75M12 12.5V19" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" />
+    </svg>
+    <span class="hidden text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100 md:inline">ArchSketch</span>
+  </div>
+
+  <input
+    #nameInput
+    [value]="store.name()"
+    (change)="rename(nameInput.value)"
+    title="図の名前（変更後に保存で反映）"
+    class="w-44 rounded-md bg-transparent px-2 py-1 text-sm text-slate-700 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+  />
+  @if (store.dirty()) {
+    <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="未保存の変更があります"></span>
+  }
+
+  <div class="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+  <!-- ファイル操作 -->
+  <button class="tb-btn" title="新規作成" (click)="newDiagram.emit()">
+    <app-ui-icon name="file-new" />
+  </button>
+  <button class="tb-btn" title="開く" (click)="openDialog.emit()">
+    <app-ui-icon name="folder-open" />
+  </button>
+  <button class="tb-btn" title="保存 (Ctrl+S)" [disabled]="saving() || (!store.dirty() && store.diagramId())" (click)="save.emit()">
+    <app-ui-icon name="save" />
+  </button>
+
+  <div class="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+  <!-- 編集 -->
+  <button class="tb-btn" title="元に戻す (Ctrl+Z)" [disabled]="!store.canUndo()" (click)="store.undo()">
+    <app-ui-icon name="undo" />
+  </button>
+  <button class="tb-btn" title="やり直し (Ctrl+Y)" [disabled]="!store.canRedo()" (click)="store.redo()">
+    <app-ui-icon name="redo" />
+  </button>
+  <button class="tb-btn" title="削除 (Delete)" [disabled]="store.selectionCount() === 0" (click)="store.deleteSelection()">
+    <app-ui-icon name="trash" />
+  </button>
+
+  <div class="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+  <!-- 整列 -->
+  <button class="tb-btn" title="グループ化 (Ctrl+G)" [disabled]="store.selectionCount() < 1" (click)="store.groupSelection()">
+    <app-ui-icon name="group" />
+  </button>
+  <button class="tb-btn" title="グループ解除 (Ctrl+Shift+G)" [disabled]="store.selectionCount() === 0" (click)="store.ungroupSelection()">
+    <app-ui-icon name="ungroup" />
+  </button>
+  <button class="tb-btn" title="自動レイアウト" [disabled]="store.nodes().length === 0" (click)="autoLayout()">
+    <app-ui-icon name="layout" />
+  </button>
+
+  <div class="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+  <!-- ズーム -->
+  <button class="tb-btn" title="ズームアウト (-)" (click)="zoomOut.emit()">
+    <app-ui-icon name="zoom-out" />
+  </button>
+  <button class="tb-btn" title="ズームイン (+)" (click)="zoomIn.emit()">
+    <app-ui-icon name="zoom-in" />
+  </button>
+  <button class="tb-btn" title="全体表示 (0)" (click)="zoomFit.emit()">
+    <app-ui-icon name="fit" />
+  </button>
+  <button class="tb-btn" title="100% (1)" (click)="zoomReset.emit()">1:1</button>
+
+  <div class="flex-1"></div>
+
+  <!-- エクスポート -->
+  <div class="relative">
+    <button class="tb-btn w-auto gap-1.5 px-2" title="エクスポート" (click)="exportOpen.set(!exportOpen())">
+      <app-ui-icon name="download" />
+      <span class="hidden text-xs lg:inline">エクスポート</span>
+    </button>
+    @if (exportOpen()) {
+      <div
+        class="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+      >
+        <button class="menu-item" (click)="exportOpen.set(false); exportJson.emit()">JSON（.json）</button>
+        <button class="menu-item" (click)="exportOpen.set(false); exportSvg.emit()">SVG（.svg）</button>
+        <button class="menu-item" (click)="exportOpen.set(false); exportPng.emit()">PNG（.png）</button>
+      </div>
+    }
+  </div>
+
+  <input #fileInput type="file" accept=".json,application/json" class="hidden" (change)="onImportFile(fileInput)" />
+  <button class="tb-btn" title="JSON をインポート" (click)="fileInput.click()">
+    <app-ui-icon name="upload" />
+  </button>
+
+  <button class="tb-btn" title="ダーク / ライト テーマ切替" (click)="theme.toggle()">
+    @if (theme.isDark()) {
+      <app-ui-icon name="sun" />
+    } @else {
+      <app-ui-icon name="moon" />
+    }
+  </button>
+</div>

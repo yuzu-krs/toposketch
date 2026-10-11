@@ -1,0 +1,256 @@
+<div class="relative h-full w-full overflow-hidden">
+  <svg
+    #svgRoot
+    class="block h-full w-full touch-none"
+    [attr.data-diagram-name]="store.name()"
+    [style.cursor]="canvasCursor()"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerCancel($event)"
+    (dblclick)="onDoubleClick($event)"
+    (dragover)="onDragOver($event)"
+    (drop)="onDrop($event)"
+  >
+    <defs>
+      <pattern id="as-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="1" cy="1" r="1" [attr.fill]="pal().grid"></circle>
+      </pattern>
+      <marker id="as-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 Z" [attr.fill]="pal().edge"></path>
+      </marker>
+      <marker id="as-arrow-sel" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 Z" [attr.fill]="pal().edgeSelected"></path>
+      </marker>
+    </defs>
+
+    <!-- 背景色（スクリーン座標） -->
+    <rect x="0" y="0" width="100%" height="100%" [attr.fill]="pal().background"></rect>
+
+    <g id="as-content" [attr.transform]="transform()">
+      @if (store.doc().background.grid) {
+        <rect
+          data-export-exclude
+          [attr.x]="gridRect().x"
+          [attr.y]="gridRect().y"
+          [attr.width]="gridRect().width"
+          [attr.height]="gridRect().height"
+          fill="url(#as-grid)"
+        ></rect>
+      }
+
+      <g id="as-entities">
+        <!-- グループ -->
+        @for (view of groupsView(); track view.group.id) {
+          <g [attr.data-group-id]="view.group.id">
+            <rect
+              [attr.x]="view.bounds.x"
+              [attr.y]="view.bounds.y"
+              [attr.width]="view.bounds.width"
+              [attr.height]="view.bounds.height"
+              rx="14"
+              [attr.fill]="hexAlpha(view.group.color, isSelectedGroup(view.group.id) ? '26' : '12')"
+              [attr.stroke]="hexAlpha(view.group.color, '99')"
+              [attr.stroke-width]="isSelectedGroup(view.group.id) ? 2 : 1.2"
+              stroke-dasharray="10 6"
+              class="cursor-move"
+            ></rect>
+            <g [attr.transform]="'translate(' + (view.bounds.x + 10) + ', ' + (view.bounds.y + 8) + ')'">
+              <rect
+                rx="4"
+                [attr.width]="groupLabelWidth(view.group.label)"
+                height="19"
+                [attr.fill]="hexAlpha(view.group.color, '30')"
+                [attr.stroke]="hexAlpha(view.group.color, '66')"
+              ></rect>
+              <text x="7" y="13.5" font-size="10.5" font-weight="600" [attr.fill]="pal().groupLabel" class="pointer-events-none">
+                {{ view.group.label }}
+              </text>
+            </g>
+          </g>
+        }
+
+        <!-- エッジ -->
+        @for (view of edgesView(); track view.edge.id) {
+          <g [attr.data-edge-id]="view.edge.id" class="cursor-pointer">
+            <path [attr.d]="view.geo.d" fill="none" stroke="transparent" stroke-width="18"></path>
+            <path
+              [attr.d]="view.geo.d"
+              fill="none"
+              [attr.stroke]="edgeStroke(view.edge.id)"
+              [attr.stroke-width]="edgeStrokeWidth(view.edge.id)"
+              [attr.stroke-dasharray]="view.edge.style === 'dashed' ? '7 5' : null"
+              [attr.marker-end]="markerEnd(view.edge.direction, isSelectedEdge(view.edge.id))"
+              [attr.marker-start]="markerStart(view.edge.direction, isSelectedEdge(view.edge.id))"
+            ></path>
+            @if (view.edge.label) {
+              <text
+                [attr.x]="view.geo.mid.x"
+                [attr.y]="view.geo.mid.y - 7"
+                text-anchor="middle"
+                font-size="11"
+                [attr.fill]="pal().edgeLabel"
+                [attr.stroke]="pal().background"
+                stroke-width="3.5"
+                paint-order="stroke"
+              >
+                {{ view.edge.label }}
+              </text>
+            }
+          </g>
+        }
+
+        <!-- ノード -->
+        @for (node of store.nodes(); track node.id) {
+          <g
+            [attr.data-node-id]="node.id"
+            [attr.transform]="'translate(' + node.x + ', ' + node.y + ')'"
+            class="cursor-move"
+            (pointerenter)="hoverNodeId.set(node.id)"
+            (pointerleave)="onNodeLeave(node.id)"
+          >
+            @if (isSelectedNode(node.id)) {
+              <rect
+                data-export-exclude
+                x="-5"
+                y="-5"
+                [attr.width]="node.width + 10"
+                [attr.height]="node.height + 10"
+                rx="13"
+                fill="none"
+                [attr.stroke]="node.color"
+                opacity="0.25"
+                stroke-width="7"
+              ></rect>
+            }
+            <rect
+              [attr.width]="node.width"
+              [attr.height]="node.height"
+              rx="10"
+              [attr.fill]="pal().nodeFill"
+              [attr.stroke]="nodeStroke(node)"
+              [attr.stroke-width]="nodeStrokeWidth(node)"
+            ></rect>
+            <rect x="0.75" y="7" width="3.5" [attr.height]="node.height - 14" rx="1.75" [attr.fill]="node.color" opacity="0.85"></rect>
+            <svg
+              [attr.viewBox]="iconViewBox(node.type)"
+              x="13"
+              [attr.y]="(node.height - 30) / 2"
+              width="30"
+              height="30"
+              [innerHTML]="iconHtml(node.type)"
+            ></svg>
+            @for (line of labelYs(node).lines; track $index) {
+              <text [attr.x]="52" [attr.y]="line.y" font-size="12.5" font-weight="600" [attr.fill]="pal().nodeText">{{ line.text }}</text>
+            }
+            <text x="52" [attr.y]="labelYs(node).captionY" font-size="9" letter-spacing="0.5" [attr.fill]="pal().nodeSubText">
+              {{ typeCaption(node.type) }}
+            </text>
+
+            @if (showPorts(node)) {
+              @for (port of ports(node); track port.side) {
+                <circle
+                  data-export-exclude
+                  [attr.data-port]="port.side"
+                  [attr.data-node-id]="node.id"
+                  [attr.cx]="port.x"
+                  [attr.cy]="port.y"
+                  r="4.5"
+                  [attr.fill]="pal().port"
+                  [attr.stroke]="node.color"
+                  stroke-width="1.6"
+                  class="cursor-crosshair"
+                ></circle>
+              }
+            }
+          </g>
+        }
+      </g>
+
+      <!-- マーキー選択（UI 専用） -->
+      @if (marquee(); as m) {
+        <rect
+          data-export-exclude
+          [attr.x]="m.x"
+          [attr.y]="m.y"
+          [attr.width]="m.width"
+          [attr.height]="m.height"
+          [attr.fill]="hexAlpha(pal().marquee, '22')"
+          [attr.stroke]="pal().marquee"
+          stroke-dasharray="5 4"
+        ></rect>
+      }
+
+      <!-- 接続プレビュー（UI 専用） -->
+      @if (connectPreview(); as cp) {
+        <path data-export-exclude [attr.d]="cp.d" fill="none" [attr.stroke]="pal().selection" stroke-width="2" stroke-dasharray="6 4"></path>
+      }
+      @if (connectTargetId(); as targetId) {
+        @if (targetNode(targetId); as tn) {
+          <rect
+            data-export-exclude
+            [attr.x]="tn.x - 3"
+            [attr.y]="tn.y - 3"
+            [attr.width]="tn.width + 6"
+            [attr.height]="tn.height + 6"
+            rx="12"
+            fill="none"
+            [attr.stroke]="pal().selection"
+            stroke-width="2.5"
+            stroke-dasharray="4 3"
+          ></rect>
+        }
+      }
+    </g>
+  </svg>
+
+  <!-- 空のキャンバス -->
+  @if (store.nodes().length === 0) {
+    <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+      <div
+        class="pointer-events-auto max-w-sm rounded-2xl border border-slate-200 bg-white/90 p-6 text-center shadow-xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/90"
+      >
+        <svg width="42" height="42" viewBox="0 0 24 24" class="mx-auto mb-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+          <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9Z" />
+          <path d="M4 7.5 12 12l8-4.5M12 12v9" />
+        </svg>
+        <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100">キャンバスは空です</h2>
+        <p class="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+          左のパレットからコンポーネントをドラッグ＆ドロップ、またはクリックで追加できます。
+          ノードをホバーして端の ● からドラッグすると、ノード同士を接続できます。
+        </p>
+        <button
+          (click)="loadSample()"
+          class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500"
+        >
+          サンプル図を読み込む
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- インラインラベル編集 -->
+  @if (editing(); as ed) {
+    <div class="absolute z-30" [style.left.px]="ed.x" [style.top.px]="ed.y">
+      <input
+        #editInput
+        type="text"
+        [value]="ed.value"
+        (keydown.enter)="$event.preventDefault(); commitEdit()"
+        (keydown.escape)="$event.stopPropagation(); cancelEdit()"
+        (blur)="commitEdit()"
+        class="w-[170px] rounded-md border-2 border-indigo-500 bg-white px-2 py-1 text-center text-sm text-slate-800 shadow-lg outline-none dark:bg-slate-900 dark:text-slate-100"
+      />
+    </div>
+  }
+
+  <!-- ステータスチップ -->
+  <div
+    class="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-lg bg-white/85 px-2.5 py-1 text-xs text-slate-600 shadow backdrop-blur dark:bg-slate-900/85 dark:text-slate-300"
+  >
+    <span class="font-mono">{{ zoomPercent() }}%</span>
+    <span class="opacity-40">|</span>
+    <span>ノード {{ documentStats().nodes }}</span>
+    <span>エッジ {{ documentStats().edges }}</span>
+  </div>
+</div>

@@ -1,0 +1,6 @@
+/* キャンバスは SVG 属性で描画するため、追加スタイルはほぼ不要。 */
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+}

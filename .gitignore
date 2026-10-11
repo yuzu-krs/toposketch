@@ -1,0 +1,22 @@
+# ---- Node / Angular ----
+node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+yarn-error.log*
+
+# ---- .NET ----
+backend/**/bin/
+backend/**/obj/
+*.user
+*.suo
+.vs/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
+# ---- ローカル環境設定（接続文字列などを含む場合はここに置く） ----
+*.local.json

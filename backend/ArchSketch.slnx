@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ArchSketch.Api/ArchSketch.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ArchSketch.Api.Tests/ArchSketch.Api.Tests.csproj" />
+  </Folder>
+</Solution>
